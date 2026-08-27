@@ -1,3 +1,4 @@
+import { getPublicUrl } from "@/lib/getPublicUrl";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(
@@ -15,7 +16,7 @@ export async function POST(
         });
 
         return Response.redirect(
-            new URL("/colonists", request.url)
+            new URL("/colonists", getPublicUrl(request))
         );
     } catch (error) {
         console.error("Failed to delete colonist:", error);

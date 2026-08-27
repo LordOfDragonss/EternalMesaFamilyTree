@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { getPublicUrl } from "@/lib/getPublicUrl";
 
 export async function POST(
     request: Request,
@@ -101,7 +102,7 @@ export async function POST(
         });
 
         return NextResponse.redirect(
-            new URL(`/legacies/${legacyId}`, request.url)
+            new URL(`/legacies/${legacyId}`, getPublicUrl(request))
         );
     } catch (error) {
         console.error("Failed to edit legacy:", error);

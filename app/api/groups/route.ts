@@ -1,3 +1,4 @@
+import { getPublicUrl } from "@/lib/getPublicUrl";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
         });
 
         return NextResponse.redirect(
-            new URL(`/groups/${group.id}`, request.url)
+            new URL(`/groups/${group.id}`, getPublicUrl(request))
         );
     } catch (error) {
         console.error("Failed to create group:", error);

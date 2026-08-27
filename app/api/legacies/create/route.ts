@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { getPublicUrl } from "@/lib/getPublicUrl";
 
 export async function POST(request: Request) {
     try {
@@ -70,7 +71,8 @@ export async function POST(request: Request) {
         });
 
         return NextResponse.redirect(
-            new URL(`/legacies/${legacy.id}`, request.url)
+            new URL(`/legacies/${legacy.id}`, 
+                getPublicUrl(request))
         );
     } catch (error) {
         console.error("Failed to create legacy:", error);

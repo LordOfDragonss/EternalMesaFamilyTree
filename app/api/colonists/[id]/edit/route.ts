@@ -371,7 +371,6 @@ export async function POST(
                                         ),
 
                                     isDead,
-
                                     deathYear,
                                     deathMonth,
                                     deathDay,
@@ -573,10 +572,24 @@ export async function POST(
          * ---------------------------------------------------------
          */
 
+        const forwardedHost =
+            request.headers.get("x-forwarded-host");
+
+        const forwardedProto =
+            request.headers.get("x-forwarded-proto");
+
+        const host =
+            forwardedHost ??
+            request.headers.get("host");
+
+        const protocol =
+            forwardedProto ??
+            "http";
+
         return NextResponse.redirect(
             new URL(
                 `/colonists/${colonist.id}`,
-                request.url
+                `${protocol}://${host}`
             ),
             303
         );

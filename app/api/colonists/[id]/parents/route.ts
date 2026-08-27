@@ -1,3 +1,4 @@
+import { getPublicUrl } from "@/lib/getPublicUrl";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(
@@ -80,7 +81,7 @@ export async function POST(
         });
 
         return Response.redirect(
-            new URL(`/colonists/${childId}/edit`, request.url)
+            new URL(`/colonists/${childId}/edit`, getPublicUrl(request))
         );
     } catch (error) {
         console.error(

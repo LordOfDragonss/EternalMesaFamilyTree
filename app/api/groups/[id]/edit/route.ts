@@ -1,0 +1,62 @@
+import { prisma } from "@/lib/prisma";
+import { NextResponse } from "next/server";
+
+export async function POST(
+    request: Request,
+    {
+        params,
+    }: {
+        params: Promise<{ id: string }>;
+    }
+) {
+    const { id } = await params;
+
+    const groupId = Number(id);
+
+    if (Number.isNaN(groupId)) {
+        return NextResponse.redirect(
+            new URL("/groups", request.url)
+        );
+    }
+
+    const formData = await request.formData();
+
+    const name = formData.get("name");
+    const description = formData.get("description");
+
+    if (typeof name !== "string" || !name.trim()) {
+        return NextResponse.redirect(
+            new URL(`/groups/${groupId}/edit`, request.url)
+        );
+    }
+
+    const existingGroup = await prisma.group.findUnique({
+        where: {
+            id: groupId,
+        },
+    });
+
+    if (!existingGroup) {
+        return NextResponse.redirect(
+            new URL("/groups", request.url)
+        );
+    }
+
+    const group = await prisma.group.update({
+        where: {
+            id: groupId,
+        },
+        data: {
+            name: name.trim(),
+            description:
+                typeof description === "string" &&
+                description.trim()
+                    ? description.trim()
+                    : null,
+        },
+    });
+
+    return NextResponse.redirect(
+        new URL(`/groups/${group.id}`, request.url)
+    );
+}

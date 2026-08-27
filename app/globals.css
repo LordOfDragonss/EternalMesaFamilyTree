@@ -1,0 +1,232 @@
+@import "tailwindcss";
+
+/* @theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+} */
+
+.btn {
+    padding: 6px 12px;
+    margin-bottom: 0;
+
+    display: inline-block;
+    text-decoration: none;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: middle;
+    -ms-touch-action: manipulation;
+    touch-action: manipulation;
+    cursor: pointer;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    background-image: none;
+    background-color: #693402;
+    border: 1px solid white;
+    border-radius: 25%;
+}
+
+.btn:focus,
+.btn:active:focus {
+    outline: thin dotted;
+    outline: 5px auto -webkit-focus-ring-color;
+    outline-offset: -2px;
+}
+
+.btn:hover,
+.btn:focus {
+    background-color: #d38842;
+    text-decoration: none;
+}
+
+.btn:active {
+    background-image: none;
+    outline: 0;
+    -webkit-box-shadow: inset 0 3px 5px rgba(0, 0, 0, .125);
+    box-shadow: inset 0 3px 5px rgba(0, 0, 0, .125);
+}
+
+.btn-danger {
+    padding: 6px 12px;
+    margin-bottom: 0;
+
+    display: inline-block;
+    text-decoration: none;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: middle;
+    -ms-touch-action: manipulation;
+    touch-action: manipulation;
+    cursor: pointer;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    background-image: none;
+    background-color: #ff2600;
+    border: 1px solid white;
+    border-radius: 25%;
+}
+
+.btn-danger:focus,
+.btn-danger:active:focus {
+    outline: thin dotted;
+    outline: 5px auto -webkit-focus-ring-color;
+    outline-offset: -2px;
+}
+
+.btn-danger:hover,
+.btn-danger:focus {
+    background-color: #961e09;
+    text-decoration: none;
+}
+
+.btn-danger:active {
+    background-image: none;
+    outline: 0;
+    -webkit-box-shadow: inset 0 3px 5px rgba(0, 0, 0, .125);
+    box-shadow: inset 0 3px 5px rgba(0, 0, 0, .125);
+}
+
+.colonist-card {
+    transition:
+        transform 150ms ease,
+        box-shadow 150ms ease,
+        border-color 150ms ease;
+}
+.colonist-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--legacy-color) !important;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35) !important;
+}
+
+.colonist-card-link ,
+.legacy-card-link{
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+}
+
+.legacy-card {
+    position: relative;
+    transition:
+        transform 150ms ease,
+        box-shadow 150ms ease,
+        border-color 150ms ease;
+}
+
+.legacy-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--legacy-color) !important;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35) !important;
+}
+
+.legacy-card-link {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+}
+
+
+.site-navigation {
+    width: 100%;
+    background: #111111;
+    border-bottom: 1px solid #292929;
+}
+
+.site-navigation-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 24px;
+
+    min-height: 64px;
+
+    display: flex;
+    align-items: center;
+    gap: 40px;
+}
+
+.site-title {
+    color: #e7e7e7;
+    text-decoration: none;
+    font-size: 1.1rem;
+    font-weight: 650;
+    white-space: nowrap;
+}
+
+.site-title:hover {
+    color: #d97b3a;
+}
+
+.navigation-tabs {
+    height: 100%;
+
+    display: flex;
+    align-items: stretch;
+    gap: 4px;
+}
+
+.navigation-tab {
+    position: relative;
+
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    padding: 0 16px;
+
+    color: #999999;
+    text-decoration: none;
+
+    font-size: 0.9rem;
+    font-weight: 500;
+
+    transition:
+        color 150ms ease,
+        background-color 150ms ease;
+}
+
+.navigation-tab:hover {
+    color: #e5e5e5;
+    background: #181818;
+}
+
+.navigation-tab.active {
+    color: #d97b3a;
+}
+
+.navigation-tab.active::after {
+    content: "";
+
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    bottom: 0;
+
+    height: 2px;
+
+    background: #d97b3a;
+    border-radius: 2px 2px 0 0;
+}
+.group-card {
+    position: relative;
+    transition:
+        transform 150ms ease,
+        box-shadow 150ms ease,
+        border-color 150ms ease;
+}
+
+.group-card:hover {
+    transform: translateY(-2px);
+    border-color: #4a4a4a !important;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35) !important;
+}
+
+.group-card-link {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+}

@@ -1,0 +1,238 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Gender {
+  Male
+  Female
+}
+
+enum ParentType {
+  Biological
+  OvumDonor
+  Other
+}
+
+enum PartnershipType {
+  Lover
+  Married
+  Ex
+}
+
+enum Passion {
+  Apathy
+  None
+  Interested
+  Burning
+  Natural
+  Critical
+}
+
+model Colonist {
+
+  id        Int     @id @default(autoincrement())
+  firstName String
+  nickname  String?
+  lastName  String
+  title     String?
+  gender    Gender
+
+  birthYear  Int?
+  birthMonth Int?
+  birthDay   Int?
+
+  isDead     Boolean @default(false)
+  deathYear  Int?
+  deathMonth Int?
+  deathDay   Int?
+
+  imageURL String?
+
+  // Legacy / family line
+  legacyId Int?
+  legacy   Legacy? @relation("LegacyMembers", fields: [legacyId], references: [id], onDelete: SetNull)
+
+  // If this colonist is the founder of a legacy
+  foundedLegacy Legacy? @relation("LegacyFounder")
+
+  // Legacies where this colonist is considered notable
+  notableInLegacies LegacyNotableColonist[]
+
+  groups ColonistGroup[]
+
+  children ParentChild[] @relation("Parent")
+  parents  ParentChild[] @relation("Child")
+
+  partnerARelationships Partnership[] @relation("PartnerA")
+  partnerBRelationships Partnership[] @relation("PartnerB")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  colonistSkills ColonistSkill[]
+  colonistTraits ColonistTrait[]
+}
+
+model Legacy {
+  id          Int     @id @default(autoincrement())
+  name        String  @unique
+  description String?
+  color       String?
+
+  // Colonists belonging to this legacy
+  members Colonist[] @relation("LegacyMembers")
+
+  // The colonist who originally founded this legacy
+  foundingColonistId Int?      @unique
+  foundingColonist   Colonist? @relation("LegacyFounder", fields: [foundingColonistId], references: [id], onDelete: SetNull)
+
+  // Colonists considered historically notable within this legacy
+  notableColonists LegacyNotableColonist[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model LegacyNotableColonist {
+  legacyId    Int
+  colonistId  Int
+  description String?
+
+  legacy   Legacy   @relation(fields: [legacyId], references: [id], onDelete: Cascade)
+  colonist Colonist @relation(fields: [colonistId], references: [id], onDelete: Cascade)
+
+  @@id([legacyId, colonistId])
+}
+
+model ParentChild {
+  id       Int        @id @default(autoincrement())
+  parentId Int
+  childId  Int
+  type     ParentType
+
+  parent Colonist @relation("Parent", fields: [parentId], references: [id], onDelete: Cascade)
+  child  Colonist @relation("Child", fields: [childId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, childId])
+}
+
+model Partnership {
+  id Int @id @default(autoincrement())
+
+  partnerAId Int
+  partnerBId Int
+  type       PartnershipType
+
+  partnerA Colonist @relation("PartnerA", fields: [partnerAId], references: [id], onDelete: Cascade)
+  partnerB Colonist @relation("PartnerB", fields: [partnerBId], references: [id], onDelete: Cascade)
+
+  @@unique([partnerAId, partnerBId])
+}
+
+model Skill {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  colonistSkills ColonistSkill[]
+  expertises     Expertise[]
+}
+
+model ColonistSkill {
+  id         Int     @id @default(autoincrement())
+  colonistId Int
+  skillId    Int
+  level      Int
+  passion    Passion
+  isKnown    Boolean @default(true)
+
+  colonist Colonist @relation(fields: [colonistId], references: [id], onDelete: Cascade)
+  skill    Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  expertises ColonistExpertise[]
+
+  @@unique([colonistId, skillId])
+}
+
+model ColonistExpertise {
+  id              Int @id @default(autoincrement())
+  colonistSkillId Int
+  expertiseId     Int
+  level           Int
+
+  colonistSkill ColonistSkill @relation(fields: [colonistSkillId], references: [id], onDelete: Cascade)
+
+  expertise Expertise @relation(fields: [expertiseId], references: [id])
+
+  @@unique([colonistSkillId, expertiseId])
+}
+
+model Expertise {
+  id                 Int                 @id @default(autoincrement())
+  skillId            Int
+  name               String              @unique
+  description        String
+  effects            ExpertiseEffect[]
+  skill              Skill               @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  colonistExpertises ColonistExpertise[]
+}
+
+model ExpertiseEffect {
+  id          Int     @id @default(autoincrement())
+  expertiseId Int
+  name        String
+  value       Float
+  unit        String?
+
+  expertise Expertise @relation(fields: [expertiseId], references: [id], onDelete: Cascade)
+
+  @@unique([expertiseId, name])
+}
+
+model Group {
+  id          Int     @id @default(autoincrement())
+  name        String
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  colonists ColonistGroup[]
+}
+
+model ColonistGroup {
+  colonistId Int
+  groupId    Int
+
+  colonist Colonist @relation(fields: [colonistId], references: [id], onDelete: Cascade)
+  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@id([colonistId, groupId])
+}
+
+model Trait {
+  id          Int     @id @default(autoincrement())
+  defName     String  @unique
+  name        String?
+  description String?
+
+  colonistTraits ColonistTrait[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ColonistTrait {
+  id         Int @id @default(autoincrement())
+  colonistId Int
+  traitId    Int
+
+  colonist Colonist @relation(fields: [colonistId], references: [id], onDelete: Cascade)
+  trait    Trait    @relation(fields: [traitId], references: [id], onDelete: Cascade)
+
+  @@unique([colonistId, traitId])
+}

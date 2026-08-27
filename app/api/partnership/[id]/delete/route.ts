@@ -1,3 +1,4 @@
+import { getPublicUrl } from "@/lib/getPublicUrl";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(
@@ -33,7 +34,7 @@ export async function POST(
         return Response.redirect(
             new URL(
                 `/colonists/${returnTo}/edit`,
-                request.url
+                getPublicUrl(request)
             )
         );
     } catch (error) {

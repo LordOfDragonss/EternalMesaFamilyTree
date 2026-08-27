@@ -1,3 +1,4 @@
+import { getPublicUrl } from "@/lib/getPublicUrl";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -38,7 +39,7 @@ export async function POST(
       });
 
     return Response.redirect(
-      new URL(`/colonists/${returnTo}/edit`, request.url)
+      new URL(`/colonists/${returnTo}/edit`, getPublicUrl(request))
     );
   } catch (error) {
     console.error("Failed to update parent-child relationship:", error);

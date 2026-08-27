@@ -16,7 +16,7 @@ export async function POST(
 
     if (Number.isNaN(groupId)) {
         return NextResponse.redirect(
-            new URL("/groups", request.url)
+            new URL("/groups", getPublicUrl(request))
         );
     }
 
@@ -27,7 +27,7 @@ export async function POST(
 
     if (typeof name !== "string" || !name.trim()) {
         return NextResponse.redirect(
-            new URL(`/groups/${groupId}/edit`, request.url)
+            new URL(`/groups/${groupId}/edit`, getPublicUrl(request))
         );
     }
 

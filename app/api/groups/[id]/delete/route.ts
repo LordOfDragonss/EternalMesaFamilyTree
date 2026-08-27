@@ -1,3 +1,4 @@
+import { getPublicUrl } from "@/lib/getPublicUrl";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -15,7 +16,7 @@ export async function POST(
 
     if (Number.isNaN(groupId)) {
         return NextResponse.redirect(
-            new URL("/groups", request.url)
+            new URL("/groups", getPublicUrl(request))
         );
     }
 
@@ -27,7 +28,7 @@ export async function POST(
 
     if (!group) {
         return NextResponse.redirect(
-            new URL("/groups", request.url)
+            new URL("/groups", getPublicUrl(request))
         );
     }
 
@@ -38,6 +39,6 @@ export async function POST(
     });
 
     return NextResponse.redirect(
-        new URL("/groups", request.url)
+        new URL("/groups", getPublicUrl(request))
     );
 }

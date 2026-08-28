@@ -13,6 +13,7 @@ import {
 import Relationships from "./Relationships";
 import LegacySelector from "./LegacySelector";
 import PortraitUpload from "./PortraitUpload";
+import GenderSelect from "./GenderSelect";
 import TraitsEditor from "../[id]/traits/TraitsEditor";
 import SkillsEditor, {
     CreateSkill,
@@ -101,21 +102,6 @@ export default async function NewColonist() {
         }));
 
     const initialExpertises: CreateExpertise[] = [];
-
-    const relationshipTypes = [
-        {
-            value: "Biological",
-            label: "Biological",
-        },
-        {
-            value: "OvumDonor",
-            label: "Ovum donor",
-        },
-        {
-            value: "Other",
-            label: "Other",
-        },
-    ];
 
     const days = Array.from({ length: 15 }, (_, i) => ({
         value: (i + 1).toString(),
@@ -228,25 +214,7 @@ export default async function NewColonist() {
                                                 }}
                                             />
 
-                                            <Select
-                                                name="gender"
-                                                label="Gender"
-                                                placeholder="Gender"
-                                                data={[
-                                                    {
-                                                        value: "Male",
-                                                        label: "Male",
-                                                    },
-                                                    {
-                                                        value: "Female",
-                                                        label: "Female",
-                                                    },
-                                                ]}
-                                                required
-                                                style={{
-                                                    width: 140,
-                                                }}
-                                            />
+                                            <GenderSelect />
                                         </Group>
                                     </Stack>
                                 </Group>
@@ -430,7 +398,6 @@ export default async function NewColonist() {
                                 />
                             </Stack>
                         </Card>
-
 
                         {/* Traits */}
                         <TraitsEditor

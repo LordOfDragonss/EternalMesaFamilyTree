@@ -12,6 +12,8 @@ import { Pencil, Plus } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import DeleteButton from "@/app/components/DeleteButton";
 
+export const dynamic = "force-dynamic";
+
 export default async function GroupsPage() {
     const groups = await prisma.group.findMany({
         include: {

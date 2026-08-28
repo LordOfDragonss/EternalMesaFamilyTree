@@ -1,3 +1,4 @@
+import { getPublicUrl } from "@/lib/getPublicUrl";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -92,6 +93,6 @@ export async function POST(
     });
 
     return NextResponse.redirect(
-        new URL(`/legacies/${legacyId}`, request.url)
+        new URL(`/legacies/${legacyId}`, getPublicUrl(request))
     );
 }

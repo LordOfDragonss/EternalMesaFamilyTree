@@ -1,3 +1,4 @@
+import { getPublicUrl } from "@/lib/getPublicUrl";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -73,7 +74,7 @@ export async function POST(
         });
 
         return NextResponse.redirect(
-            new URL(`/groups/${groupIdNumber}`, request.url)
+            new URL(`/groups/${groupIdNumber}`, getPublicUrl(request))
         );
     } catch (error) {
         console.error(

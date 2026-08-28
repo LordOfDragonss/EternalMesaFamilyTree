@@ -12,8 +12,6 @@ import { Pencil, Plus } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import DeleteButton from "@/app/components/DeleteButton";
 
-export const dynamic = "force-dynamic";
-
 export default async function LegaciesPage() {
     const legacies = await prisma.legacy.findMany({
         include: {

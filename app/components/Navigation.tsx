@@ -2,7 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, Component, MapPin, BookOpen,Orbit,Crown,Gem} from "lucide-react";
+import {
+    Users,
+    Component,
+    MapPin,
+    BookOpen,
+    Orbit,
+    Crown,
+    Gem,
+    GitBranch,
+    TreePine,
+} from "lucide-react";
 
 const links = [
     {
@@ -14,6 +24,11 @@ const links = [
         label: "Legacies",
         href: "/legacies",
         icon: Crown,
+    },
+    {
+        label: "Family Tree",
+        href: "/family-tree",
+        icon: TreePine,
     },
     {
         label: "Groups",
@@ -30,7 +45,7 @@ const links = [
         href: "/locations",
         icon: MapPin,
     },
-        {
+    {
         label: "Relics",
         href: "/relics",
         icon: Gem,
@@ -57,9 +72,8 @@ export default function Navigation() {
                             <Link
                                 key={href}
                                 href={href}
-                                className={`navigation-tab ${
-                                    isActive ? "active" : ""
-                                }`}
+                                className={`navigation-tab ${isActive ? "active" : ""
+                                    }`}
                             >
                                 <Icon size={17} strokeWidth={1.8} />
                                 <span>{label}</span>

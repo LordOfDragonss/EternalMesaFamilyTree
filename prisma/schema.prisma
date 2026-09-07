@@ -14,7 +14,7 @@ enum Gender {
 
 enum ParentType {
   Biological
-  OvumDonor
+  Surrogate
   Other
 }
 

@@ -14,20 +14,28 @@ export function getParentLabel(
         return "Biological parent";
     }
 
-    if (type === "OvumDonor") {
+    if (type === "Surrogate") {
         if (gender === "Female") {
-            return "Birth mother";
+            return "Surrogate mother";
         }
 
-        return "Birth parent";
+        if (gender === "Male") {
+            return "Surrogate father";
+        }
+
+        return "Surrogate parent";
     }
 
-    if (gender === "Male") {
-        return "Father";
-    }
+    if (type === "Other") {
+        if (gender === "Male") {
+            return "Father";
+        }
 
-    if (gender === "Female") {
-        return "Mother";
+        if (gender === "Female") {
+            return "Mother";
+        }
+
+        return "Parent";
     }
 
     return "Parent";

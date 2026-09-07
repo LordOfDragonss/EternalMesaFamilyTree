@@ -18,7 +18,7 @@ type ColonistOption = {
 
 type ParentChildType =
     | "Biological"
-    | "OvumDonor"
+    | "Surrogate"
     | "Other";
 
 type PartnershipType =
@@ -91,8 +91,8 @@ const relationshipTypes = [
         label: "Biological",
     },
     {
-        value: "OvumDonor",
-        label: "Ovum donor",
+        value: "Surrogate",
+        label: "Surrogate",
     },
     {
         value: "Other",

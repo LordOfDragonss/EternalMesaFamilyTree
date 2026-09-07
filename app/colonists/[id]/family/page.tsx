@@ -241,8 +241,12 @@ export default async function ColonistFamilyPage({
             parent.colonist.gender === "Male"
     );
 
+    const surrogateParents = parents.filter(
+        (parent) => parent.type === "Surrogate"
+    );
+
     const otherParents = parents.filter(
-        (parent) => parent.type !== "Biological"
+        (parent) => parent.type === "Other"
     );
 
     /*
@@ -640,6 +644,41 @@ export default async function ColonistFamilyPage({
                                             </Group>
                                         </div>
                                     )}
+                                {/* Surrogate */}
+                                {surrogateParents.length > 0 && (
+                                    <div>
+                                        <Text
+                                            size="sm"
+                                            c="dimmed"
+                                            mb="xs"
+                                        >
+                                            Surrogate
+                                        </Text>
+
+                                        <Stack gap="xs">
+                                            {surrogateParents.map(
+                                                (relationship) => (
+                                                    <FamilyMember
+                                                        key={
+                                                            relationship
+                                                                .colonist
+                                                                .id
+                                                        }
+                                                        colonist={
+                                                            relationship.colonist
+                                                        }
+                                                        label={getParentLabel(
+                                                            relationship.type,
+                                                            relationship
+                                                                .colonist
+                                                                .gender
+                                                        )}
+                                                    />
+                                                )
+                                            )}
+                                        </Stack>
+                                    </div>
+                                )}
 
                                 {/* Other parents */}
                                 {otherParents.length > 0 && (
@@ -649,7 +688,7 @@ export default async function ColonistFamilyPage({
                                             c="dimmed"
                                             mb="xs"
                                         >
-                                            Other parents
+                                            Other parental relationships
                                         </Text>
 
                                         <Stack gap="xs">

@@ -15,7 +15,7 @@ export async function POST(
         const childId = Number(formData.get("childId"));
         const type = formData.get("type") as
             | "Biological"
-            | "OvumDonor"
+            | "Surrogate"
             | "Other";
 
         // Make sure the parent exists

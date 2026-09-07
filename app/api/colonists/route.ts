@@ -10,7 +10,7 @@ type Gender = (typeof validGenders)[number];
 
 const validParentChildTypes = [
     "Biological",
-    "OvumDonor",
+    "Surrogate",
     "Other",
 ] as const;
 type ParentChildType =

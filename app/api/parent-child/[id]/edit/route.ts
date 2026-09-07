@@ -13,7 +13,7 @@ export async function POST(
     const returnTo = Number(formData.get("returnTo"));
     const type = formData.get("type") as
     | "Biological"
-    | "OvumDonor"
+    | "Surrogate"
     | "Other";
 
     const relationship = await prisma.parentChild.findUnique({

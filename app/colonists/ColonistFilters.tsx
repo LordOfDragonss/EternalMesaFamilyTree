@@ -362,6 +362,14 @@ export default function ColonistFilters({
                         value: "dead",
                         label: "Dead",
                     },
+                    {
+                        value: "deadKnown",
+                        label: "Dead — date known",
+                    },
+                    {
+                        value: "deadUnknown",
+                        label: "Dead — date unknown",
+                    },
                 ]}
                 value={
                     status

@@ -137,11 +137,31 @@ export default async function ColonistsPage({
      */
 
     const statusFilter =
-        params.status === "alive"
-            ? { isDead: false }
-            : params.status === "dead"
-                ? { isDead: true }
-                : {};
+    params.status === "alive"
+        ? {
+            isDead: false,
+        }
+        : params.status === "dead"
+            ? {
+                isDead: true,
+            }
+            : params.status === "deadKnown"
+                ? {
+                    isDead: true,
+                    OR: [
+                        { deathYear: { not: null } },
+                        { deathMonth: { not: null } },
+                        { deathDay: { not: null } },
+                    ],
+                }
+                : params.status === "deadUnknown"
+                    ? {
+                        isDead: true,
+                        deathYear: null,
+                        deathMonth: null,
+                        deathDay: null,
+                    }
+                    : {};
 
     /*
 * ---------------------------------------------------------

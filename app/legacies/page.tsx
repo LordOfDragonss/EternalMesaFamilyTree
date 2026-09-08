@@ -11,9 +11,50 @@ import { Pencil, Plus } from "lucide-react";
 
 import { prisma } from "@/lib/prisma";
 import DeleteButton from "@/app/components/DeleteButton";
+import LegacyFilters from "./LegacyFilters";
 
-export default async function LegaciesPage() {
+type LegaciesPageProps = {
+    searchParams: Promise<{
+        search?: string;
+        color?: string;
+    }>;
+};
+
+
+
+export default async function LegaciesPage({
+    searchParams,
+}: LegaciesPageProps) {
+    const params = await searchParams;
+
+    const search = params.search?.trim() ?? "";
+    const colorFilter =
+        params.color === "with"
+            ? {
+                color: {
+                    not: null,
+                },
+            }
+            : params.color === "without"
+                ? {
+                    color: null,
+                }
+                : {};
+
     const legacies = await prisma.legacy.findMany({
+        where: {
+            ...(search
+                ? {
+                    name: {
+                        contains: search,
+                        mode: "insensitive",
+                    },
+                }
+                : {}),
+
+            ...colorFilter,
+        },
+
         include: {
             foundingColonist: true,
             _count: {
@@ -23,6 +64,7 @@ export default async function LegaciesPage() {
                 },
             },
         },
+
         orderBy: {
             name: "asc",
         },
@@ -52,6 +94,10 @@ export default async function LegaciesPage() {
                     </ActionIcon>
                 </Tooltip>
             </Group>
+            <LegacyFilters
+                initialSearch={search}
+                initialColor={params.color ?? ""}
+            />
 
             <SimpleGrid
                 cols={{
@@ -93,8 +139,8 @@ export default async function LegaciesPage() {
                             style={
                                 legacy.color
                                     ? {
-                                          color: legacy.color,
-                                      }
+                                        color: legacy.color,
+                                    }
                                     : undefined
                             }
                         >
@@ -118,8 +164,8 @@ export default async function LegaciesPage() {
                             style={
                                 legacy.color
                                     ? {
-                                          color: legacy.color,
-                                      }
+                                        color: legacy.color,
+                                    }
                                     : undefined
                             }
                         >
@@ -184,7 +230,7 @@ export default async function LegaciesPage() {
 
                 {legacies.length === 0 && (
                     <Text c="dimmed">
-                        No legacies have been created yet.
+                        No legacies found. Try changing your search or color filter.
                     </Text>
                 )}
             </SimpleGrid>

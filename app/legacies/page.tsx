@@ -7,7 +7,11 @@ import {
     Title,
     Tooltip,
 } from "@mantine/core";
-import { Pencil, Plus } from "lucide-react";
+import {
+    Palette,
+    Pencil,
+    Plus,
+} from "lucide-react";
 
 import { prisma } from "@/lib/prisma";
 import DeleteButton from "@/app/components/DeleteButton";
@@ -80,19 +84,32 @@ export default async function LegaciesPage({
                         Browse the family lines and legacies of the colony.
                     </Text>
                 </div>
-
-                <Tooltip label="Add legacy">
-                    <ActionIcon
-                        component="a"
-                        href="/legacies/create"
-                        size="lg"
-                        variant="filled"
-                        color="mesa"
-                        aria-label="Add legacy"
-                    >
-                        <Plus size={20} />
-                    </ActionIcon>
-                </Tooltip>
+                <Group gap="xs">
+                    <Tooltip label="Compare legacy colors">
+                        <ActionIcon
+                            component="a"
+                            href="/legacies/colors"
+                            size="lg"
+                            variant="filled"
+                            color="mesa"
+                            aria-label="Compare legacy colors"
+                        >
+                            <Palette size={20} />
+                        </ActionIcon>
+                    </Tooltip>
+                    <Tooltip label="Add legacy">
+                        <ActionIcon
+                            component="a"
+                            href="/legacies/create"
+                            size="lg"
+                            variant="filled"
+                            color="mesa"
+                            aria-label="Add legacy"
+                        >
+                            <Plus size={20} />
+                        </ActionIcon>
+                    </Tooltip>
+                </Group>
             </Group>
             <LegacyFilters
                 initialSearch={search}

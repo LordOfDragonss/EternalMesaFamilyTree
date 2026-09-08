@@ -73,13 +73,101 @@ const componentGap = 180;
 const minZoom = 0.3;
 const maxZoom = 2.2;
 
+/*
+ * ---------------------------------------------------------
+ * Layout debugging
+ * ---------------------------------------------------------
+ *
+ * Set to false once we're done diagnosing the ordering.
+ */
+const DEBUG_LAYOUT = true;
+
 function getColonistName(
     colonist: FamilyTreeColonist
 ) {
     return `${colonist.firstName}${colonist.nickname
-            ? ` "${colonist.nickname}"`
-            : ""
+        ? ` "${colonist.nickname}"`
+        : ""
         } ${colonist.lastName}`;
+}
+
+/*
+ * A colonist is relevant to layout debugging if they are part
+ * of an actual family branch.
+ *
+ * Relevant:
+ * - has parents
+ * - has children
+ * - has a partner AND that partner has parents or children
+ *
+ * This deliberately does NOT treat an isolated partner-only
+ * couple as a relevant branch.
+ *
+ * Completely standalone colonists:
+ * - no parents
+ * - no children
+ * - no partner with family connections
+ *
+ * are omitted from debug output only.
+ */
+function isDebugRelevantColonist(
+    id: number,
+    parentsMap: Map<number, number[]>,
+    childrenMap: Map<number, number[]>,
+    partnershipMap: Map<number, Set<number>>
+) {
+    const hasParents =
+        (parentsMap.get(id)?.length ?? 0) > 0;
+
+    const hasChildren =
+        (childrenMap.get(id)?.length ?? 0) > 0;
+
+    if (hasParents || hasChildren) {
+        return true;
+    }
+
+    const partners =
+        partnershipMap.get(id) ??
+        new Set<number>();
+
+    return [...partners].some((partnerId) => {
+        const partnerHasParents =
+            (parentsMap.get(partnerId)?.length ?? 0) > 0;
+
+        const partnerHasChildren =
+            (childrenMap.get(partnerId)?.length ?? 0) > 0;
+
+        return (
+            partnerHasParents ||
+            partnerHasChildren
+        );
+    });
+}
+
+function getDebugName(
+    id: number,
+    colonistMap: Map<number, FamilyTreeColonist>
+) {
+    const colonist =
+        colonistMap.get(id);
+
+    return colonist
+        ? `${getColonistName(colonist)} [${id}]`
+        : `Unknown [${id}]`;
+}
+
+function getDebugNames(
+    ids: number[],
+    colonistMap: Map<number, FamilyTreeColonist>
+) {
+    return ids
+        .map((id) =>
+            getDebugName(
+                id,
+                colonistMap
+            )
+        )
+        .join(" | ");
 }
 
 /*
@@ -241,26 +329,6 @@ function buildConnectedComponents(
  * ---------------------------------------------------------
  * Generation calculation
  * ---------------------------------------------------------
- *
- * Generations are first calculated exclusively from ancestry.
- *
- * Partnerships are then aligned to the deepest generation
- * occupied by any member of the partnership group.
- *
- * This means:
- *
- *     Petra = generation 1
- *     Rom   = generation 3
- *
- * becomes:
- *
- *     Petra = generation 3
- *     Rom   = generation 3
- *
- * The important part is that this does NOT recursively move
- * the children of Petra. Petra simply occupies the same visual
- * generation as Rom.
- * ---------------------------------------------------------
  */
 
 function calculateGenerations(
@@ -275,9 +343,6 @@ function calculateGenerations(
     const componentSet =
         new Set(component);
 
-    /*
-     * Find ancestry roots.
-     */
     const roots =
         component.filter((id) => {
             const parents =
@@ -295,13 +360,6 @@ function calculateGenerations(
         queue.push(root);
     }
 
-    /*
-     * Calculate ancestry generations.
-     *
-     * We use the deepest parent path so that a person with
-     * multiple parents is placed below the deepest relevant
-     * ancestry branch.
-     */
     while (queue.length > 0) {
         const currentId =
             queue.shift()!;
@@ -346,9 +404,6 @@ function calculateGenerations(
         }
     }
 
-    /*
-     * Anything not reached by ancestry is a root.
-     */
     for (const id of component) {
         if (!generation.has(id)) {
             generation.set(id, 0);
@@ -356,10 +411,10 @@ function calculateGenerations(
     }
 
     /*
-     * Align partnership groups.
+     * Partnership groups are aligned to the deepest generation
+     * occupied by any member.
      *
-     * Partnership relationships are treated as connected
-     * groups so that A-B-C partnerships are kept together.
+     * This is intentionally unchanged.
      */
     const visited =
         new Set<number>();
@@ -435,6 +490,1100 @@ function calculateGenerations(
     }
 
     return generation;
+}
+
+/*
+ * ---------------------------------------------------------
+ * Horizontal branch ordering
+ * ---------------------------------------------------------
+ */
+
+function buildBranchOrder(
+    component: number[],
+    parentsMap: Map<number, number[]>,
+    childrenMap: Map<number, number[]>,
+    partnershipMap: Map<number, Set<number>>,
+    colonistMap: Map<number, FamilyTreeColonist>
+) {
+    const componentSet = new Set(component);
+
+    /*
+     * ---------------------------------------------------------
+     * 1. Find true ancestry roots
+     * ---------------------------------------------------------
+     */
+
+    const roots = component.filter(
+        (id) =>
+            (parentsMap.get(id) ?? []).filter(
+                (parentId) =>
+                    componentSet.has(parentId)
+            ).length === 0
+    );
+
+    /*
+     * Natural root order is only used as a stabilizer.
+     * It is NOT the primary ordering signal.
+     */
+    const rootOrder =
+        new Map<number, number>();
+
+    roots.forEach(
+        (rootId, index) => {
+            rootOrder.set(
+                rootId,
+                index
+            );
+        }
+    );
+
+    /*
+     * ---------------------------------------------------------
+     * 2. Create initial branches
+     *
+     * Partnered roots belong to the same branch.
+     * ---------------------------------------------------------
+     */
+
+    const rootBranch =
+        new Map<number, number>();
+
+    const branchRoots =
+        new Map<number, number[]>();
+
+    let nextBranchId = 0;
+
+    for (const rootId of roots) {
+        if (
+            rootBranch.has(rootId)
+        ) {
+            continue;
+        }
+
+        const branchId =
+            nextBranchId++;
+
+        const rootsForBranch: number[] =
+            [];
+
+        const queue = [rootId];
+
+        const visited =
+            new Set<number>();
+
+        while (
+            queue.length > 0
+        ) {
+            const currentId =
+                queue.shift()!;
+
+            if (
+                visited.has(
+                    currentId
+                )
+            ) {
+                continue;
+            }
+
+            visited.add(
+                currentId
+            );
+
+            if (
+                rootBranch.has(
+                    currentId
+                )
+            ) {
+                continue;
+            }
+
+            rootBranch.set(
+                currentId,
+                branchId
+            );
+
+            rootsForBranch.push(
+                currentId
+            );
+
+            for (
+                const partnerId of
+                partnershipMap.get(
+                    currentId
+                ) ?? []
+            ) {
+                if (
+                    !componentSet.has(
+                        partnerId
+                    )
+                ) {
+                    continue;
+                }
+
+                /*
+                 * Only true roots participate in the initial
+                 * branch merging.
+                 */
+                if (
+                    !rootOrder.has(
+                        partnerId
+                    )
+                ) {
+                    continue;
+                }
+
+                if (
+                    !visited.has(
+                        partnerId
+                    )
+                ) {
+                    queue.push(
+                        partnerId
+                    );
+                }
+            }
+        }
+
+        branchRoots.set(
+            branchId,
+            rootsForBranch
+        );
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * 3. Propagate branch membership down ancestry
+     * ---------------------------------------------------------
+     */
+
+    const branchMembership =
+        new Map<
+            number,
+            Set<number>
+        >();
+
+    const branchDepth =
+        new Map<
+            string,
+            number
+        >();
+
+    for (
+        const branchId of
+        branchRoots.keys()
+    ) {
+        branchMembership.set(
+            branchId,
+            new Set<number>()
+        );
+    }
+
+    const ancestryQueue: {
+        colonistId: number;
+        branchId: number;
+        depth: number;
+    }[] = [];
+
+    for (
+        const [
+            rootId,
+            branchId,
+        ] of rootBranch
+    ) {
+        ancestryQueue.push({
+            colonistId:
+                rootId,
+
+            branchId,
+
+            depth: 0,
+        });
+    }
+
+    const visitedBranchColonists =
+        new Set<string>();
+
+    while (
+        ancestryQueue.length > 0
+    ) {
+        const current =
+            ancestryQueue.shift()!;
+
+        const {
+            colonistId,
+            branchId,
+            depth,
+        } = current;
+
+        const visitKey =
+            `${colonistId}:${branchId}`;
+
+        if (
+            visitedBranchColonists.has(
+                visitKey
+            )
+        ) {
+            continue;
+        }
+
+        visitedBranchColonists.add(
+            visitKey
+        );
+
+        const existingDepth =
+            branchDepth.get(
+                visitKey
+            );
+
+        if (
+            existingDepth ===
+                undefined ||
+            depth < existingDepth
+        ) {
+            branchDepth.set(
+                visitKey,
+                depth
+            );
+        }
+
+        branchMembership
+            .get(branchId)!
+            .add(
+                colonistId
+            );
+
+        for (
+            const childId of
+            childrenMap.get(
+                colonistId
+            ) ?? []
+        ) {
+            if (
+                !componentSet.has(
+                    childId
+                )
+            ) {
+                continue;
+            }
+
+            ancestryQueue.push({
+                colonistId:
+                    childId,
+
+                branchId,
+
+                depth:
+                    depth + 1,
+            });
+        }
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * 4. Handle unusual/disconnected structures
+     * ---------------------------------------------------------
+     */
+
+    for (
+        const colonistId of
+        component
+    ) {
+        let belongsToBranch =
+            false;
+
+        for (
+            const members of
+            branchMembership.values()
+        ) {
+            if (
+                members.has(
+                    colonistId
+                )
+            ) {
+                belongsToBranch =
+                    true;
+
+                break;
+            }
+        }
+
+        if (
+            belongsToBranch
+        ) {
+            continue;
+        }
+
+        const branchId =
+            nextBranchId++;
+
+        branchRoots.set(
+            branchId,
+            [colonistId]
+        );
+
+        branchMembership.set(
+            branchId,
+            new Set([
+                colonistId,
+            ])
+        );
+
+        branchDepth.set(
+            `${colonistId}:${branchId}`,
+            0
+        );
+
+        if (
+            !rootOrder.has(
+                colonistId
+            )
+        ) {
+            rootOrder.set(
+                colonistId,
+                rootOrder.size
+            );
+        }
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * 5. Natural branch order
+     * ---------------------------------------------------------
+     */
+
+    const naturalBranchOrder =
+        Array.from(
+            branchRoots.keys()
+        ).sort(
+            (a, b) => {
+                const aRoot =
+                    branchRoots
+                        .get(a)?.[0];
+
+                const bRoot =
+                    branchRoots
+                        .get(b)?.[0];
+
+                return (
+                    (
+                        rootOrder.get(
+                            aRoot!
+                        ) ??
+                        Number.MAX_SAFE_INTEGER
+                    ) -
+                    (
+                        rootOrder.get(
+                            bRoot!
+                        ) ??
+                        Number.MAX_SAFE_INTEGER
+                    )
+                );
+            }
+        );
+
+    const naturalBranchIndex =
+        new Map<number, number>();
+
+    naturalBranchOrder.forEach(
+        (
+            branchId,
+            index
+        ) => {
+            naturalBranchIndex.set(
+                branchId,
+                index
+            );
+        }
+    );
+
+    /*
+     * ---------------------------------------------------------
+     * 6. Find cross-branch partnerships
+     * ---------------------------------------------------------
+     */
+
+    const branchPartners =
+        new Map<
+            number,
+            Set<number>
+        >();
+
+    for (
+        const branchId of
+        branchRoots.keys()
+    ) {
+        branchPartners.set(
+            branchId,
+            new Set<number>()
+        );
+    }
+
+    function getBranchDepth(
+        colonistId: number,
+        branchId: number
+    ) {
+        return (
+            branchDepth.get(
+                `${colonistId}:${branchId}`
+            ) ??
+            Number.MAX_SAFE_INTEGER
+        );
+    }
+
+    /*
+     * Earlier-generation partnerships are considered more
+     * structurally important.
+     */
+    function getPartnershipBranchPair(
+        branchA: number,
+        branchB: number
+    ) {
+        let bestPair:
+            | {
+                  a: number;
+                  b: number;
+                  totalDepth: number;
+                  depthDifference: number;
+              }
+            | undefined;
+
+        const membersA =
+            branchMembership.get(
+                branchA
+            ) ??
+            new Set<number>();
+
+        const membersB =
+            branchMembership.get(
+                branchB
+            ) ??
+            new Set<number>();
+
+        for (
+            const colonistA of
+            membersA
+        ) {
+            for (
+                const partnerId of
+                partnershipMap.get(
+                    colonistA
+                ) ?? []
+            ) {
+                if (
+                    !membersB.has(
+                        partnerId
+                    )
+                ) {
+                    continue;
+                }
+
+                const depthA =
+                    getBranchDepth(
+                        colonistA,
+                        branchA
+                    );
+
+                const depthB =
+                    getBranchDepth(
+                        partnerId,
+                        branchB
+                    );
+
+                const candidate = {
+                    a: colonistA,
+
+                    b: partnerId,
+
+                    totalDepth:
+                        depthA +
+                        depthB,
+
+                    depthDifference:
+                        Math.abs(
+                            depthA -
+                            depthB
+                        ),
+                };
+
+                if (
+                    !bestPair ||
+                    candidate.totalDepth <
+                        bestPair.totalDepth ||
+                    (
+                        candidate.totalDepth ===
+                            bestPair.totalDepth &&
+                        candidate.depthDifference <
+                            bestPair.depthDifference
+                    )
+                ) {
+                    bestPair =
+                        candidate;
+                }
+            }
+        }
+
+        return bestPair;
+    }
+
+    const branchIds =
+        Array.from(
+            branchRoots.keys()
+        );
+
+    for (
+        let i = 0;
+        i < branchIds.length;
+        i++
+    ) {
+        for (
+            let j = i + 1;
+            j < branchIds.length;
+            j++
+        ) {
+            const branchA =
+                branchIds[i];
+
+            const branchB =
+                branchIds[j];
+
+            const pair =
+                getPartnershipBranchPair(
+                    branchA,
+                    branchB
+                );
+
+            if (!pair) {
+                continue;
+            }
+
+            branchPartners
+                .get(branchA)!
+                .add(branchB);
+
+            branchPartners
+                .get(branchB)!
+                .add(branchA);
+        }
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * 7. Relationship-aware ordering
+     * ---------------------------------------------------------
+     *
+     * This is the current ordering logic that successfully keeps
+     * strongly connected branches such as King -> Brainiac close.
+     *
+     * Natural order remains a secondary stabilizing force.
+     * ---------------------------------------------------------
+     */
+
+    let orderedBranches =
+        [
+            ...naturalBranchOrder,
+        ];
+
+    const naturalPosition =
+        new Map<
+            number,
+            number
+        >();
+
+    naturalBranchOrder.forEach(
+        (
+            branchId,
+            index
+        ) => {
+            naturalPosition.set(
+                branchId,
+                index
+            );
+        }
+    );
+
+    function calculateOrderingCost(
+        order: number[]
+    ) {
+        const position =
+            new Map<
+                number,
+                number
+            >();
+
+        order.forEach(
+            (
+                branchId,
+                index
+            ) => {
+                position.set(
+                    branchId,
+                    index
+                );
+            }
+        );
+
+        let relationshipCost =
+            0;
+
+        let naturalCost =
+            0;
+
+        /*
+         * Partnership distance is the primary signal.
+         *
+         * Squared distance makes a very distant relationship
+         * increasingly expensive.
+         */
+        for (
+            const branchId of
+            order
+        ) {
+            const partners =
+                branchPartners.get(
+                    branchId
+                ) ??
+                new Set<number>();
+
+            for (
+                const partnerId of
+                partners
+            ) {
+                if (
+                    branchId >=
+                    partnerId
+                ) {
+                    continue;
+                }
+
+                const branchPosition =
+                    position.get(
+                        branchId
+                    ) ?? 0;
+
+                const partnerPosition =
+                    position.get(
+                        partnerId
+                    ) ?? 0;
+
+                const distance =
+                    Math.abs(
+                        branchPosition -
+                        partnerPosition
+                    );
+
+                relationshipCost +=
+                    distance *
+                    distance;
+            }
+        }
+
+        /*
+         * Natural ordering is deliberately weak.
+         *
+         * This keeps the successful relationship ordering while
+         * still giving the optimizer a preference for not moving
+         * everything unnecessarily.
+         */
+        for (
+            const branchId of
+            order
+        ) {
+            const currentPosition =
+                position.get(
+                    branchId
+                ) ?? 0;
+
+            const originalPosition =
+                naturalPosition.get(
+                    branchId
+                ) ??
+                currentPosition;
+
+            naturalCost +=
+                Math.abs(
+                    currentPosition -
+                    originalPosition
+                );
+        }
+
+        return (
+            relationshipCost * 4 +
+            naturalCost
+        );
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * 8. Optimize through insertion moves
+     * ---------------------------------------------------------
+     */
+
+    let currentCost =
+        calculateOrderingCost(
+            orderedBranches
+        );
+
+    let improved =
+        true;
+
+    let pass =
+        0;
+
+    while (
+        improved &&
+        pass < 8
+    ) {
+        improved =
+            false;
+
+        pass++;
+
+        for (
+            let sourceIndex = 0;
+            sourceIndex <
+            orderedBranches.length;
+            sourceIndex++
+        ) {
+            const branchId =
+                orderedBranches[
+                    sourceIndex
+                ];
+
+            let bestOrder =
+                orderedBranches;
+
+            let bestCost =
+                currentCost;
+
+            for (
+                let targetIndex = 0;
+                targetIndex <
+                orderedBranches.length;
+                targetIndex++
+            ) {
+                if (
+                    targetIndex ===
+                    sourceIndex
+                ) {
+                    continue;
+                }
+
+                const candidate =
+                    [
+                        ...orderedBranches,
+                    ];
+
+                candidate.splice(
+                    sourceIndex,
+                    1
+                );
+
+                candidate.splice(
+                    targetIndex,
+                    0,
+                    branchId
+                );
+
+                const candidateCost =
+                    calculateOrderingCost(
+                        candidate
+                    );
+
+                if (
+                    candidateCost <
+                    bestCost
+                ) {
+                    bestCost =
+                        candidateCost;
+
+                    bestOrder =
+                        candidate;
+                }
+            }
+
+            if (
+                bestOrder !==
+                orderedBranches
+            ) {
+                orderedBranches =
+                    bestOrder;
+
+                currentCost =
+                    bestCost;
+
+                improved =
+                    true;
+            }
+        }
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * 9. Assign final branch ranks
+     * ---------------------------------------------------------
+     */
+
+    const branchRank =
+        new Map<
+            number,
+            number
+        >();
+
+    orderedBranches.forEach(
+        (
+            branchId,
+            index
+        ) => {
+            branchRank.set(
+                branchId,
+                index
+            );
+        }
+    );
+
+    /*
+     * ---------------------------------------------------------
+     * 10. Convert branch ranks to colonist ranks
+     * ---------------------------------------------------------
+     */
+
+    const colonistBranchRank =
+        new Map<
+            number,
+            number
+        >();
+
+    for (
+        const [
+            branchId,
+            members,
+        ] of branchMembership
+    ) {
+        const rank =
+            branchRank.get(
+                branchId
+            ) ??
+            naturalBranchIndex.get(
+                branchId
+            ) ??
+            0;
+
+        for (
+            const colonistId of
+            members
+        ) {
+            const existingRank =
+                colonistBranchRank.get(
+                    colonistId
+                );
+
+            if (
+                existingRank ===
+                    undefined ||
+                rank < existingRank
+            ) {
+                colonistBranchRank.set(
+                    colonistId,
+                    rank
+                );
+            }
+        }
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * DEBUG: original filtered branch ordering
+     * ---------------------------------------------------------
+     *
+     * IMPORTANT:
+     * The debug filter has NO effect on the actual layout.
+     *
+     * Standalone colonists/branches are hidden from the debug
+     * output so the console focuses on actual family branches.
+     * ---------------------------------------------------------
+     */
+
+    if (DEBUG_LAYOUT) {
+        const relevantBranches =
+            orderedBranches.filter(
+                (branchId) => {
+                    const members =
+                        branchMembership.get(
+                            branchId
+                        ) ??
+                        new Set<number>();
+
+                    return Array.from(
+                        members
+                    ).some((id) =>
+                        isDebugRelevantColonist(
+                            id,
+                            parentsMap,
+                            childrenMap,
+                            partnershipMap
+                        )
+                    );
+                }
+            );
+
+        console.groupCollapsed(
+            `[FamilyTree] Branch order`
+        );
+
+        console.table(
+            relevantBranches.map(
+                (branchId) => {
+                    const members =
+                        branchMembership.get(
+                            branchId
+                        ) ??
+                        new Set<number>();
+
+                    const rank =
+                        branchRank.get(
+                            branchId
+                        ) ??
+                        0;
+
+                    const natural =
+                        naturalBranchIndex.get(
+                            branchId
+                        );
+
+                    const relevantMemberIds =
+                        Array.from(
+                            members
+                        ).filter((id) =>
+                            isDebugRelevantColonist(
+                                id,
+                                parentsMap,
+                                childrenMap,
+                                partnershipMap
+                            )
+                        );
+
+                    const partnerBranches =
+                        Array.from(
+                            branchPartners.get(
+                                branchId
+                            ) ??
+                            []
+                        )
+                            .filter(
+                                (
+                                    partnerBranch
+                                ) => {
+                                    const partnerMembers =
+                                        branchMembership.get(
+                                            partnerBranch
+                                        ) ??
+                                        new Set<number>();
+
+                                    return Array.from(
+                                        partnerMembers
+                                    ).some(
+                                        (
+                                            id
+                                        ) =>
+                                            isDebugRelevantColonist(
+                                                id,
+                                                parentsMap,
+                                                childrenMap,
+                                                partnershipMap
+                                            )
+                                    );
+                                }
+                            )
+                            .sort(
+                                (a, b) =>
+                                    (
+                                        branchRank.get(
+                                            a
+                                        ) ??
+                                        0
+                                    ) -
+                                    (
+                                        branchRank.get(
+                                            b
+                                        ) ??
+                                        0
+                                    )
+                            );
+
+                    return {
+                        rank,
+
+                        branch:
+                            branchId,
+
+                        natural,
+
+                        members:
+                            getDebugNames(
+                                relevantMemberIds,
+                                colonistMap
+                            ),
+
+                        partners:
+                            partnerBranches
+                                .map(
+                                    (
+                                        partnerBranch
+                                    ) => {
+                                        const partnerMembers =
+                                            branchMembership.get(
+                                                partnerBranch
+                                            ) ??
+                                            new Set<number>();
+
+                                        const relevantPartnerIds =
+                                            Array.from(
+                                                partnerMembers
+                                            ).filter(
+                                                (
+                                                    id
+                                                ) =>
+                                                    isDebugRelevantColonist(
+                                                        id,
+                                                        parentsMap,
+                                                        childrenMap,
+                                                        partnershipMap
+                                                    )
+                                            );
+
+                                        return `${partnerBranch}: ${getDebugNames(
+                                            relevantPartnerIds,
+                                            colonistMap
+                                        )}`;
+                                    }
+                                )
+                                .join(
+                                    " | "
+                                ),
+                    };
+                }
+            )
+        );
+
+        console.log(
+            "Branches are ordered LEFT → RIGHT by final rank."
+        );
+
+        console.log(
+            "Standalone-only branches are hidden from this debug output."
+        );
+
+        console.log(
+            "Natural rank is shown for comparison; partnership structure is the primary ordering signal."
+        );
+
+        console.groupEnd();
+    }
+
+    return {
+        branchRank:
+            colonistBranchRank,
+    };
 }
 
 /*
@@ -601,12 +1750,49 @@ function layoutComponent(
     colonistMap: Map<number, FamilyTreeColonist>,
     componentOffsetX: number
 ): PositionedNode[] {
+    /*
+     * Debug relevance for this component.
+     *
+     * This has NO effect on the actual layout.
+     */
+    const debugRelevantIds =
+        component.filter((id) =>
+            isDebugRelevantColonist(
+                id,
+                parentsMap,
+                childrenMap,
+                partnershipMap
+            )
+        );
+
+    const hasRelevantDebugColonists =
+        debugRelevantIds.length > 0;
+
+    /*
+     * Vertical generation calculation.
+     *
+     * UNCHANGED.
+     */
     const generationMap =
         calculateGenerations(
             component,
             parentsMap,
             childrenMap,
             partnershipMap
+        );
+
+    /*
+     * Horizontal branch ordering.
+     */
+    const {
+        branchRank,
+    } =
+        buildBranchOrder(
+            component,
+            parentsMap,
+            childrenMap,
+            partnershipMap,
+            colonistMap
         );
 
     const groups =
@@ -669,6 +1855,10 @@ function layoutComponent(
                 a - b
         );
 
+    if (generations.length === 0) {
+        return [];
+    }
+
     const groupByColonist =
         new Map<
             number,
@@ -684,14 +1874,6 @@ function layoutComponent(
         }
     }
 
-    /*
-     * groupCenter is the actual center of the group.
-     *
-     * This is deliberately separate from the desired center.
-     * Desired positions represent where relationships want the
-     * group to be. Actual positions are then collision-resolved
-     * around those desired positions.
-     */
     const groupCenter =
         new Map<number, number>();
 
@@ -710,6 +1892,36 @@ function layoutComponent(
             ) *
             partnerSpacing
         );
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * Horizontal branch rank
+     * ---------------------------------------------------------
+     */
+
+    function getGroupBranchRank(
+        group: LayoutGroup
+    ) {
+        const ranks =
+            group.memberIds
+                .map((memberId) =>
+                    branchRank.get(
+                        memberId
+                    )
+                )
+                .filter(
+                    (
+                        rank
+                    ): rank is number =>
+                        rank !== undefined
+                );
+
+        if (ranks.length === 0) {
+            return Infinity;
+        }
+
+        return Math.min(...ranks);
     }
 
     function setGroupCenter(
@@ -856,14 +2068,90 @@ function layoutComponent(
      * ---------------------------------------------------------
      * First generation
      * ---------------------------------------------------------
-     *
-     * Roots have no parent anchors, so they are simply placed
-     * next to each other.
      */
+
     const firstGeneration =
-        groupsByGeneration.get(
-            generations[0]
-        ) ?? [];
+        [
+            ...(groupsByGeneration.get(
+                generations[0]
+            ) ?? [])
+        ].sort(
+            (a, b) => {
+                const branchDifference =
+                    getGroupBranchRank(a) -
+                    getGroupBranchRank(b);
+
+                if (
+                    branchDifference !==
+                    0
+                ) {
+                    return branchDifference;
+                }
+
+                return a.id - b.id;
+            }
+        );
+
+    /*
+     * ---------------------------------------------------------
+     * DEBUG: visible first-generation ordering
+     * ---------------------------------------------------------
+     */
+
+    if (
+        DEBUG_LAYOUT &&
+        hasRelevantDebugColonists
+    ) {
+        const relevantFirstGeneration =
+            firstGeneration.filter((group) =>
+                group.memberIds.some((id) =>
+                    isDebugRelevantColonist(
+                        id,
+                        parentsMap,
+                        childrenMap,
+                        partnershipMap
+                    )
+                )
+            );
+
+        console.groupCollapsed(
+            `[FamilyTree] Generation 0 ordering — component offset ${componentOffsetX}`
+        );
+
+        console.table(
+            relevantFirstGeneration.map(
+                (group) => ({
+                    groupId:
+                        group.id,
+
+                    members:
+                        getDebugNames(
+                            group.memberIds,
+                            colonistMap
+                        ),
+
+                    generation:
+                        group.generation,
+
+                    branchRank:
+                        getGroupBranchRank(
+                            group
+                        ),
+
+                    width:
+                        getGroupWidth(
+                            group
+                        ),
+                })
+            )
+        );
+
+        console.log(
+            "These groups are placed LEFT → RIGHT in this exact order."
+        );
+
+        console.groupEnd();
+    }
 
     let initialCursor =
         componentOffsetX;
@@ -890,13 +2178,6 @@ function layoutComponent(
      * ---------------------------------------------------------
      * Subsequent generations
      * ---------------------------------------------------------
-     *
-     * Every group gets a desired CENTER.
-     *
-     * This is important: the collision system below works with
-     * centers instead of left edges. That makes it possible to
-     * move groups in either direction symmetrically.
-     * ---------------------------------------------------------
      */
 
     for (
@@ -911,9 +2192,28 @@ function layoutComponent(
             ];
 
         const generationGroups =
-            groupsByGeneration.get(
-                generation
-            ) ?? [];
+            [
+                ...(
+                    groupsByGeneration.get(
+                        generation
+                    ) ?? []
+                )
+            ].sort(
+                (a, b) => {
+                    const branchDifference =
+                        getGroupBranchRank(a) -
+                        getGroupBranchRank(b);
+
+                    if (
+                        branchDifference !==
+                        0
+                    ) {
+                        return branchDifference;
+                    }
+
+                    return a.id - b.id;
+                }
+            );
 
         if (
             generationGroups.length ===
@@ -931,12 +2231,6 @@ function layoutComponent(
         for (const group of generationGroups) {
             const targets: number[] = [];
 
-            /*
-             * Partnership groups have potentially different
-             * parent anchors for every member.
-             *
-             * We find the center that best satisfies all of them.
-             */
             if (group.isPartnershipGroup) {
                 for (
                     let index = 0;
@@ -971,11 +2265,6 @@ function layoutComponent(
                         nodeWidth / 2 -
                         width / 2;
 
-                    /*
-                     * If this member should sit on the parent
-                     * anchor, this is where the entire group's
-                     * center needs to be.
-                     */
                     targets.push(
                         parentAnchor -
                         memberOffset
@@ -983,9 +2272,6 @@ function layoutComponent(
                 }
             }
 
-            /*
-             * Normal group / sibling group.
-             */
             if (
                 targets.length ===
                 0
@@ -1012,9 +2298,6 @@ function layoutComponent(
                 }
             }
 
-            /*
-             * Normal child with parents.
-             */
             if (
                 targets.length ===
                 0
@@ -1034,11 +2317,6 @@ function layoutComponent(
                 }
             }
 
-            /*
-             * No relationship anchor.
-             *
-             * Use the component center as a fallback.
-             */
             if (
                 targets.length ===
                 0
@@ -1066,13 +2344,8 @@ function layoutComponent(
          * -----------------------------------------------------
          * Sibling cluster distribution
          * -----------------------------------------------------
-         *
-         * If several siblings share exactly the same parent
-         * anchor, spread them around that anchor before collision
-         * resolution.
-         *
-         * Partnership groups are NOT included here.
          */
+
         const processedClusters =
             new Set<number>();
 
@@ -1131,14 +2404,22 @@ function layoutComponent(
             }
 
             clusterGroups.sort(
-                (a, b) =>
-                    a.id -
-                    b.id
+                (a, b) => {
+                    const branchDifference =
+                        getGroupBranchRank(a) -
+                        getGroupBranchRank(b);
+
+                    if (
+                        branchDifference !==
+                        0
+                    ) {
+                        return branchDifference;
+                    }
+
+                    return a.id - b.id;
+                }
             );
 
-            /*
-             * Calculate the total width of the sibling row.
-             */
             const totalWidth =
                 clusterGroups.reduce(
                     (
@@ -1196,27 +2477,8 @@ function layoutComponent(
         /*
          * -----------------------------------------------------
          * Symmetric collision solver
-         * -----------------------------------------------------
          *
-         * This is the major change.
-         *
-         * The old layout effectively did:
-         *
-         *     A -> A
-         *     B -> B + overlap
-         *
-         * which creates the large one-sided pushes.
-         *
-         * We instead do:
-         *
-         *     A -> A - overlap / 2
-         *     B -> B + overlap / 2
-         *
-         * and repeat this a few times.
-         *
-         * This allows the whole generation to expand around its
-         * relationship anchors instead of drifting endlessly in
-         * one direction.
+         * Unchanged.
          * -----------------------------------------------------
          */
 
@@ -1315,13 +2577,6 @@ function layoutComponent(
                 hadCollision =
                     true;
 
-                /*
-                 * Move both groups away from each other.
-                 *
-                 * Partnership groups get slightly more protection
-                 * from movement because they have multiple
-                 * relationship anchors.
-                 */
                 let leftMovement =
                     overlap / 2;
 
@@ -1369,15 +2624,8 @@ function layoutComponent(
         /*
          * -----------------------------------------------------
          * Pull groups back toward relationship anchors
-         * -----------------------------------------------------
          *
-         * Collision resolution necessarily moves some groups away
-         * from where their relationships want them.
-         *
-         * Instead of snapping them back, apply a gentle correction.
-         *
-         * This keeps the tree compact without reintroducing
-         * one-sided pushing.
+         * Unchanged.
          * -----------------------------------------------------
          */
 
@@ -1425,18 +2673,15 @@ function layoutComponent(
 
         /*
          * -----------------------------------------------------
-         * One final symmetric collision pass
-         * -----------------------------------------------------
+         * Final symmetric collision pass
          *
-         * The anchor correction above may have brought groups
-         * together again, so resolve those collisions one more
-         * time.
+         * Unchanged.
          * -----------------------------------------------------
          */
 
         for (
             let pass = 0;
-            pass < 6;
+            pass < 20;
             pass++
         ) {
             const ordered =
@@ -1596,12 +2841,69 @@ function layoutComponent(
                 positions.get(id) ??
                 componentOffsetX,
 
+            /*
+             * IMPORTANT:
+             *
+             * Verticality remains purely generation based.
+             */
             y:
                 generation *
                 yGap,
 
             generation,
         });
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * DEBUG: final component positions
+     * ---------------------------------------------------------
+     */
+
+    if (
+        DEBUG_LAYOUT &&
+        hasRelevantDebugColonists
+    ) {
+        const relevantNodes =
+            result.filter((node) =>
+                isDebugRelevantColonist(
+                    node.colonist.id,
+                    parentsMap,
+                    childrenMap,
+                    partnershipMap
+                )
+            );
+
+        console.groupCollapsed(
+            `[FamilyTree] Final positions — component offset ${componentOffsetX}`
+        );
+
+        console.table(
+            relevantNodes.map(
+                (node) => ({
+                    name:
+                        getDebugName(
+                            node.colonist.id,
+                            colonistMap
+                        ),
+
+                    generation:
+                        node.generation,
+
+                    x:
+                        Math.round(
+                            node.x
+                        ),
+
+                    y:
+                        Math.round(
+                            node.y
+                        ),
+                })
+            )
+        );
+
+        console.groupEnd();
     }
 
     return result;
@@ -1646,22 +2948,220 @@ function layoutTree(
         );
 
     /*
-     * Put the largest family first.
+     * ---------------------------------------------------------
+     * DEBUG: connected components
+     *
+     * Standalone-only components are excluded.
+     *
+     * The actual components array is NOT modified.
+     * ---------------------------------------------------------
      */
+
+    if (DEBUG_LAYOUT) {
+        const relevantComponents =
+            components.filter((component) =>
+                component.some((id) =>
+                    isDebugRelevantColonist(
+                        id,
+                        parentsMap,
+                        childrenMap,
+                        partnershipMap
+                    )
+                )
+            );
+
+        console.groupCollapsed(
+            `[FamilyTree] Connected components — ${components.length} total, ${relevantComponents.length} relevant`
+        );
+
+        console.table(
+            relevantComponents.map(
+                (
+                    component
+                ) => {
+                    const originalIndex =
+                        components.indexOf(
+                            component
+                        );
+
+                    const relevantIds =
+                        component.filter(
+                            (id) =>
+                                isDebugRelevantColonist(
+                                    id,
+                                    parentsMap,
+                                    childrenMap,
+                                    partnershipMap
+                                )
+                        );
+
+                    return {
+                        component:
+                            originalIndex,
+
+                        totalSize:
+                            component.length,
+
+                        relevantSize:
+                            relevantIds.length,
+
+                        members:
+                            getDebugNames(
+                                relevantIds,
+                                colonistMap
+                            ),
+                    };
+                }
+            )
+        );
+
+        console.log(
+            `Standalone-only components hidden from debug output: ${components.length - relevantComponents.length}.`
+        );
+
+        console.log(
+            "Only colonists with parents, children, or a partner connected to a family branch are shown."
+        );
+
+        console.groupEnd();
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * Component order
+     * ---------------------------------------------------------
+     */
+
     components.sort(
         (a, b) =>
             b.length -
             a.length
     );
 
+    if (DEBUG_LAYOUT) {
+        const relevantComponents =
+            components.filter((component) =>
+                component.some((id) =>
+                    isDebugRelevantColonist(
+                        id,
+                        parentsMap,
+                        childrenMap,
+                        partnershipMap
+                    )
+                )
+            );
+
+        console.groupCollapsed(
+            "[FamilyTree] Final component order"
+        );
+
+        console.table(
+            relevantComponents.map(
+                (
+                    component
+                ) => {
+                    const layoutOrder =
+                        components.indexOf(
+                            component
+                        );
+
+                    const relevantIds =
+                        component.filter(
+                            (id) =>
+                                isDebugRelevantColonist(
+                                    id,
+                                    parentsMap,
+                                    childrenMap,
+                                    partnershipMap
+                                )
+                        );
+
+                    return {
+                        layoutOrder,
+
+                        totalSize:
+                            component.length,
+
+                        relevantSize:
+                            relevantIds.length,
+
+                        firstRelevant:
+                            relevantIds.length > 0
+                                ? getDebugName(
+                                    relevantIds[0],
+                                    colonistMap
+                                )
+                                : "None",
+
+                        members:
+                            getDebugNames(
+                                relevantIds,
+                                colonistMap
+                            ),
+                    };
+                }
+            )
+        );
+
+        console.groupEnd();
+    }
+
     const result: PositionedNode[] = [];
 
     let componentOffsetX = 0;
 
     for (
-        const component of
-        components
+        let componentIndex = 0;
+        componentIndex <
+        components.length;
+        componentIndex++
     ) {
+        const component =
+            components[
+            componentIndex
+            ];
+
+        if (DEBUG_LAYOUT) {
+            const relevantIds =
+                component.filter(
+                    (id) =>
+                        isDebugRelevantColonist(
+                            id,
+                            parentsMap,
+                            childrenMap,
+                            partnershipMap
+                        )
+                );
+
+            /*
+             * Only log meaningful components.
+             *
+             * IMPORTANT:
+             * The component itself is still always passed to
+             * layoutComponent below.
+             */
+            if (relevantIds.length > 0) {
+                console.groupCollapsed(
+                    `[FamilyTree] Laying out component ${componentIndex}`
+                );
+
+                console.log(
+                    "Offset X:",
+                    componentOffsetX
+                );
+
+                console.log(
+                    "Relevant members:",
+                    getDebugNames(
+                        relevantIds,
+                        colonistMap
+                    )
+                );
+
+                console.groupEnd();
+            }
+        }
+
         const nodes =
             layoutComponent(
                 component,
@@ -1695,15 +3195,45 @@ function layoutTree(
                     )
                 );
 
+            if (DEBUG_LAYOUT) {
+                const hasRelevantNodes =
+                    component.some((id) =>
+                        isDebugRelevantColonist(
+                            id,
+                            parentsMap,
+                            childrenMap,
+                            partnershipMap
+                        )
+                    );
+
+                if (hasRelevantNodes) {
+                    console.log(
+                        `[FamilyTree] Component ${componentIndex} bounds:`,
+                        {
+                            minX:
+                                Math.round(
+                                    minX
+                                ),
+                            maxX:
+                                Math.round(
+                                    maxX
+                                ),
+                            nextOffsetX:
+                                Math.round(
+                                    maxX +
+                                    nodeWidth +
+                                    componentGap
+                                ),
+                        }
+                    );
+                }
+            }
+
             componentOffsetX =
                 maxX +
                 nodeWidth +
                 componentGap;
 
-            /*
-             * Keep the next component from accidentally
-             * overlapping the current one.
-             */
             if (
                 componentOffsetX <
                 minX +
@@ -1926,7 +3456,8 @@ export default function FamilyTree({
             return;
         }
 
-        const firstNode = layoutNodes[0];
+        const firstNode =
+            layoutNodes[0];
 
         targetPos.current = {
             x:
@@ -2490,8 +4021,8 @@ export default function FamilyTree({
                                         <div className="min-w-0">
                                             <div
                                                 className={`truncate font-medium ${colonist.isDead
-                                                        ? "text-zinc-500"
-                                                        : "text-white"
+                                                    ? "text-zinc-500"
+                                                    : "text-white"
                                                     }`}
                                             >
                                                 {
@@ -2503,8 +4034,8 @@ export default function FamilyTree({
 
                                             <div
                                                 className={`truncate text-sm ${colonist.isDead
-                                                        ? "text-zinc-600"
-                                                        : "text-zinc-400"
+                                                    ? "text-zinc-600"
+                                                    : "text-zinc-400"
                                                     }`}
                                             >
                                                 {

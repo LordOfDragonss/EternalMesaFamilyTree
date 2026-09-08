@@ -97,8 +97,8 @@ export default async function LegacyPage({
     const colonistOptions = availableColonists.map((colonist) => ({
         value: colonist.id.toString(),
         label: `${colonist.firstName}${colonist.nickname
-                ? ` "${colonist.nickname}"`
-                : ""
+            ? ` "${colonist.nickname}"`
+            : ""
             } ${colonist.lastName}`,
     }));
 
@@ -106,13 +106,13 @@ export default async function LegacyPage({
         (colonist) => ({
             value: colonist.id.toString(),
             label: `${colonist.firstName}${colonist.nickname
-                    ? ` "${colonist.nickname}"`
-                    : ""
+                ? ` "${colonist.nickname}"`
+                : ""
                 } ${colonist.lastName}`,
         })
     );
 
-    const legacyColor = legacy.color || "#4dabf7";
+    const legacyColor = legacy.color || "#C8C4BC";
 
     return (
         <main

@@ -23,6 +23,7 @@ import {
     getColorFamily,
     getColorFamilyColor
 } from "@/app/lib/colorUtils";
+import LegacyColorPreview from "./LegacyColorPreview";
 
 type LegacyColor = {
     id: number;
@@ -365,6 +366,18 @@ export default function LegacyColorComparison({
                             >
                                 Apply to legacy
                             </Button>
+
+                            <div style={{ marginTop: "1rem" }}>
+                                <LegacyColorPreview
+                                    color={candidate.color}
+                                />
+                            </div>
+
+                            {candidate.compareLegacyId !== null &&
+                                (() => {
+                                    // ...
+                                })()}
+
                             {candidate.compareLegacyId !== null &&
                                 (() => {
                                     const comparedLegacy = coloredLegacies.find(

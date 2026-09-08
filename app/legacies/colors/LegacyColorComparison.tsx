@@ -20,7 +20,8 @@ import { useState } from "react";
 import {
     colorDistance,
     getColorDistanceLabel,
-    getColorFamily
+    getColorFamily,
+    getColorFamilyColor
 } from "@/app/lib/colorUtils";
 
 type LegacyColor = {
@@ -148,11 +149,17 @@ export default function LegacyColorComparison({
         "Brown",
         "Neutral",
     ];
+    const colorFamilySummary = colorFamilyOrder
+        .map((family) => ({
+            family,
+            count: colorFamilies.get(family)?.length ?? 0,
+        }))
+        .filter((item) => item.count > 0);
     const applyCandidate = candidates.find(
         (candidate) => candidate.id === applyCandidateId
     );
 
-    const applyLegacy = coloredLegacies.find(
+    const applyLegacy = legacies.find(
         (legacy) => legacy.id === applyLegacyId
     );
     return (
@@ -249,84 +256,105 @@ export default function LegacyColorComparison({
                                     {candidate.color.toUpperCase()}
                                 </Text>
                             </div>
+                            <div>
+                                <Group
+                                    mt="xs"
+                                    align="flex-end"
+                                    justify="space-between"
+                                >
+                                    <Group align="flex-end" gap="md">
+                                        <Group align="flex-end" gap="xs">
+                                            <ColorInput
+                                                label="Color"
+                                                value={candidate.color}
+                                                onChange={(value) => {
+                                                    setCandidates((current) =>
+                                                        current.map((item) =>
+                                                            item.id === candidate.id
+                                                                ? {
+                                                                    ...item,
+                                                                    color: value,
+                                                                }
+                                                                : item
+                                                        )
+                                                    );
+                                                }}
+                                                format="hex"
+                                                withPicker
+                                            />
 
-                            <Group
-                                mt="xs"
-                                align="flex-end"
-                                justify="space-between"
-                            >
-                                <Group align="flex-end" gap="md">
-                                    <ColorInput
-                                        label="Color"
-                                        value={candidate.color}
-                                        onChange={(value) => {
-                                            setCandidates((current) =>
-                                                current.map((item) =>
-                                                    item.id === candidate.id
-                                                        ? {
-                                                            ...item,
-                                                            color: value,
-                                                        }
-                                                        : item
-                                                )
-                                            );
-                                        }}
-                                        format="hex"
-                                        withPicker
-                                    />
+                                            <Group gap={6} mb={8}>
+                                                <div
+                                                    style={{
+                                                        width: 10,
+                                                        height: 10,
+                                                        borderRadius: 3,
+                                                        backgroundColor: getColorFamilyColor(
+                                                            getColorFamily(candidate.color)
+                                                        ),
+                                                        flexShrink: 0,
+                                                    }}
+                                                />
 
-                                    <Select
-                                        label="Compare to legacy"
-                                        placeholder="None"
-                                        clearable
-                                        searchable
-                                        data={coloredLegacies.map((legacy) => ({
-                                            value: legacy.id.toString(),
-                                            label: legacy.name,
-                                        }))}
-                                        value={
-                                            candidate.compareLegacyId !== null
-                                                ? candidate.compareLegacyId.toString()
-                                                : null
-                                        }
-                                        onChange={(value) => {
-                                            setCandidates((current) =>
-                                                current.map((item) =>
-                                                    item.id === candidate.id
-                                                        ? {
-                                                            ...item,
-                                                            compareLegacyId:
-                                                                value !== null
-                                                                    ? Number(value)
-                                                                    : null,
-                                                        }
-                                                        : item
-                                                )
-                                            );
-                                        }}
-                                    />
-                                </Group>
+                                                <Text size="sm" c="dimmed">
+                                                    {getColorFamily(candidate.color)}
+                                                </Text>
+                                            </Group>
+                                        </Group>
 
-                                {candidates.length > 1 && (
-                                    <Tooltip label="Remove candidate">
-                                        <ActionIcon
-                                            variant="subtle"
-                                            color="red"
-                                            onClick={() => {
+                                        <Select
+                                            label="Compare to legacy"
+                                            placeholder="None"
+                                            clearable
+                                            searchable
+                                            data={coloredLegacies.map((legacy) => ({
+                                                value: legacy.id.toString(),
+                                                label: legacy.name,
+                                            }))}
+                                            value={
+                                                candidate.compareLegacyId !== null
+                                                    ? candidate.compareLegacyId.toString()
+                                                    : null
+                                            }
+                                            onChange={(value) => {
                                                 setCandidates((current) =>
-                                                    current.filter(
-                                                        (item) =>
-                                                            item.id !== candidate.id
+                                                    current.map((item) =>
+                                                        item.id === candidate.id
+                                                            ? {
+                                                                ...item,
+                                                                compareLegacyId:
+                                                                    value !== null
+                                                                        ? Number(value)
+                                                                        : null,
+                                                            }
+                                                            : item
                                                     )
                                                 );
                                             }}
-                                            aria-label={`Remove candidate ${index + 1}`}
-                                        >
-                                            <X size={16} />
-                                        </ActionIcon>
-                                    </Tooltip>
-                                )}
-                            </Group>
+                                        />
+                                    </Group>
+
+                                    {candidates.length > 1 && (
+                                        <Tooltip label="Remove candidate">
+                                            <ActionIcon
+                                                variant="subtle"
+                                                color="red"
+                                                onClick={() => {
+                                                    setCandidates((current) =>
+                                                        current.filter(
+                                                            (item) =>
+                                                                item.id !== candidate.id
+                                                        )
+                                                    );
+                                                }}
+                                                aria-label={`Remove candidate ${index + 1}`}
+                                            >
+                                                <X size={16} />
+                                            </ActionIcon>
+                                        </Tooltip>
+                                    )}
+                                </Group>
+                            </div>
                             <Button
                                 mt="md"
                                 variant="light"
@@ -605,7 +633,55 @@ export default function LegacyColorComparison({
                     </div>
                 )}
             </div>
+            <div>
+                <Title order={2} size="h3" mb="sm">
+                    Palette summary
+                </Title>
 
+                <SimpleGrid
+                    cols={{
+                        base: 2,
+                        xs: 3,
+                        sm: 4,
+                        md: 5,
+                        lg: 6,
+                    }}
+                    spacing="sm"
+                >
+                    {colorFamilySummary.map(({ family, count }) => (
+                        <div
+                            key={family}
+                            style={{
+                                padding: "0.75rem",
+                                borderRadius: 8,
+                                border: "1px solid var(--mantine-color-default-border)",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "0.5rem",
+                            }}
+                        >
+                            <div
+                                style={{
+                                    width: 10,
+                                    height: 10,
+                                    borderRadius: 3,
+                                    backgroundColor:
+                                        getColorFamilyColor(family),
+                                    flexShrink: 0,
+                                }}
+                            />
+
+                            <Text size="sm" fw={600}>
+                                {family}
+                            </Text>
+
+                            <Text size="sm" c="dimmed" ml="auto">
+                                {count}
+                            </Text>
+                        </div>
+                    ))}
+                </SimpleGrid>
+            </div>
             <Accordion
                 multiple
                 defaultValue={["existing-colors"]}

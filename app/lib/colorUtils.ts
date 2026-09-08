@@ -150,11 +150,38 @@ export function getColorFamily(hex: string): string {
     }
 
     if (hue < 15 || hue >= 345) return "Red";
-    if (hue < 50) return "Orange";
-    if (hue < 75) return "Yellow";
+    if (hue < 45) return "Orange";
+    if (hue < 60) return "Yellow";
     if (hue < 165) return "Green";
     if (hue < 200) return "Cyan";
-    if (hue < 240) return "Blue";
-    if (hue < 300) return "Purple";
+    if (hue < 250) return "Blue";
+    if (hue < 295) return "Purple";
     return "Pink";
+}
+
+export function getColorFamilyColor(family: string): string {
+    switch (family) {
+        case "Red":
+            return "#D64545";
+        case "Orange":
+            return "#D9822B";
+        case "Yellow":
+            return "#D4B000";
+        case "Green":
+            return "#5F9E45";
+        case "Cyan":
+            return "#35A7A0";
+        case "Blue":
+            return "#4778B8";
+        case "Purple":
+            return "#7654A8";
+        case "Pink":
+            return "#C45A82";
+        case "Brown":
+            return "#795548";
+        case "Neutral":
+            return "#808080";
+        default:
+            return "#808080";
+    }
 }

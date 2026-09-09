@@ -375,11 +375,6 @@ export default function LegacyColorComparison({
 
                             {candidate.compareLegacyId !== null &&
                                 (() => {
-                                    // ...
-                                })()}
-
-                            {candidate.compareLegacyId !== null &&
-                                (() => {
                                     const comparedLegacy = coloredLegacies.find(
                                         (legacy) =>
                                             legacy.id === candidate.compareLegacyId

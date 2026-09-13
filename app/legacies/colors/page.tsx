@@ -3,11 +3,6 @@ import LegacyColorComparison from "./LegacyColorComparison";
 
 export default async function LegacyColorsPage() {
     const legacies = await prisma.legacy.findMany({
-        where: {
-            color: {
-                not: null,
-            },
-        },
         select: {
             id: true,
             name: true,

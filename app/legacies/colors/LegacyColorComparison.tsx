@@ -917,7 +917,7 @@ export default function LegacyColorComparison({
                             }}
                             spacing="md"
                         >
-                            {legacies.map((legacy) => (
+                            {coloredLegacies.map((legacy) => (
                                 <div key={legacy.id}>
                                     <div
                                         style={{

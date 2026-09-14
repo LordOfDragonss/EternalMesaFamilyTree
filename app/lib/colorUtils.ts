@@ -150,7 +150,7 @@ export function getColorFamily(hex: string): string {
     }
 
     if (hue < 15 || hue >= 345) return "Red";
-    if (hue < 45) return "Orange";
+    if (hue < 41) return "Orange";
     if (hue < 60) return "Yellow";
     if (hue < 165) return "Green";
     if (hue < 200) return "Cyan";

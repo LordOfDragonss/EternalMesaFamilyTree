@@ -211,7 +211,7 @@
     background: #d97b3a;
     border-radius: 2px 2px 0 0;
 }
-.group-card {
+.group-card , .location-card,.landmark-card{
     position: relative;
     transition:
         transform 150ms ease,
@@ -219,13 +219,13 @@
         border-color 150ms ease;
 }
 
-.group-card:hover {
+.group-card:hover , .location-card:hover,.landmark-card:hover{
     transform: translateY(-2px);
     border-color: #4a4a4a !important;
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35) !important;
 }
 
-.group-card-link {
+.group-card-link , .location-card-link,.landmark-card-link{
     position: absolute;
     inset: 0;
     z-index: 0;

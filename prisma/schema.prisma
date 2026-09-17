@@ -76,6 +76,8 @@ model Colonist {
 
   colonistSkills ColonistSkill[]
   colonistTraits ColonistTrait[]
+
+  locations Location[]
 }
 
 model Legacy {
@@ -96,6 +98,8 @@ model Legacy {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  locations Location[]
 }
 
 model LegacyNotableColonist {
@@ -235,4 +239,71 @@ model ColonistTrait {
   trait    Trait    @relation(fields: [traitId], references: [id], onDelete: Cascade)
 
   @@unique([colonistId, traitId])
+}
+
+model Location {
+    id          Int      @id @default(autoincrement())
+    name        String
+    type        LocationType
+    description String?
+
+    previousNames LocationPreviousName[]
+    images        LocationImage[]
+    landmarks     LocationLandmark[]
+
+    colonists     Colonist[]
+    legacies      Legacy[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model LocationPreviousName {
+    id         Int      @id @default(autoincrement())
+    name       String
+    order      Int      @default(0)
+
+    locationId Int
+    location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+}
+
+model LocationImage {
+    id         Int      @id @default(autoincrement())
+    imageURL   String
+    caption    String?
+    order      Int      @default(0)
+
+    locationId Int
+    location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+}
+
+model LocationLandmark {
+    id          Int      @id @default(autoincrement())
+    name        String
+    description String?
+
+    locationId Int
+    location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+    images LocationLandmarkImage[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model LocationLandmarkImage {
+    id Int @id @default(autoincrement())
+
+    imageURL String
+    caption  String?
+    order    Int @default(0)
+
+    landmarkId Int
+    landmark   LocationLandmark @relation(fields: [landmarkId], references: [id], onDelete: Cascade)
+}
+
+enum LocationType {
+    PLAYABLE_MAP
+    OUTPOST
+    OTHER
 }

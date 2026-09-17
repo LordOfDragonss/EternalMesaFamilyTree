@@ -5,16 +5,16 @@ import { Trash2 } from "lucide-react";
 
 type DeleteButtonProps = {
     action: string;
-    colonistName: string;
+    name: string;
 };
 
 export default function DeleteButton({
     action,
-    colonistName,
+    name,
 }: DeleteButtonProps) {
     function handleDelete(event: React.FormEvent<HTMLFormElement>) {
         const confirmed = window.confirm(
-            `Are you sure you want to delete ${colonistName}?`
+            `Are you sure you want to delete ${name}?`
         );
 
         if (!confirmed) {
@@ -35,7 +35,7 @@ export default function DeleteButton({
                     type="submit"
                     variant="subtle"
                     color="red"
-                    aria-label={`Delete ${colonistName}`}
+                    aria-label={`Delete ${name}`}
                 >
                     <Trash2 size={18} />
                 </ActionIcon>

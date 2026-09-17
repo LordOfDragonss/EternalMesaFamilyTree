@@ -150,7 +150,7 @@ export default async function GroupsPage() {
 
                             <DeleteButton
                                 action={`/api/groups/${group.id}/delete`}
-                                colonistName={group.name}
+                                name={group.name}
                             />
                         </Group>
                     </Card>

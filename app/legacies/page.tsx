@@ -239,7 +239,7 @@ export default async function LegaciesPage({
 
                             <DeleteButton
                                 action={`/api/legacies/${legacy.id}/delete`}
-                                colonistName={legacy.name}
+                                name={legacy.name}
                             />
                         </Group>
                     </Card>

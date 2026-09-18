@@ -13,6 +13,7 @@ import { ArrowLeft, Pencil } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import LocationHeader from "../../LocationHeader";
 import LocationNavigation from "../../LocationNavigation";
+import LandmarkGalleryAdd from "./LandmarkGalleryAdd";
 
 export default async function LandmarkPage({
     params,
@@ -140,18 +141,35 @@ export default async function LandmarkPage({
                     </>
                 )}
 
-                {landmark.images.length > 0 && (
-                    <div>
-                        <Title order={3} mb="md">
+                <div>
+                    <Group
+                        justify="space-between"
+                        align="center"
+                        mb="md"
+                    >
+                        <Title order={3}>
                             Gallery
                         </Title>
 
+                        <LandmarkGalleryAdd
+                            locationId={location.id}
+                            landmarkId={landmark.id}
+                        />
+                    </Group>
+
+                    {landmark.images.length === 0 ? (
+                        <Text c="dimmed">
+                            No images have been added yet.
+                        </Text>
+                    ) : (
                         <LandmarkGallery
                             images={landmark.images}
                             landmarkName={landmark.name}
+                            locationId={location.id}
+                            landmarkId={landmark.id}
                         />
-                    </div>
-                )}
+                    )}
+                </div>
             </Stack>
         </main>
     );

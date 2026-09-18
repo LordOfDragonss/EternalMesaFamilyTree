@@ -1,8 +1,15 @@
-import { Card, Stack, Text, Title } from "@mantine/core";
+import {
+    Card,
+    Group,
+    Stack,
+    Text,
+    Title,
+} from "@mantine/core";
 
 import { prisma } from "@/lib/prisma";
 import LocationHeader from "../LocationHeader";
 import LocationNavigation from "../LocationNavigation";
+import LocationGalleryAdd from "./LocationGalleryAdd";
 import LocationGalleryGrid from "./LocationGalleryGrid";
 
 export default async function LocationGalleryPage({
@@ -12,23 +19,24 @@ export default async function LocationGalleryPage({
 }) {
     const { id } = await params;
 
-    const location = await prisma.location.findUnique({
-        where: {
-            id: Number(id),
-        },
-        include: {
-            previousNames: {
-                orderBy: {
-                    order: "asc",
+    const location =
+        await prisma.location.findUnique({
+            where: {
+                id: Number(id),
+            },
+            include: {
+                previousNames: {
+                    orderBy: {
+                        order: "asc",
+                    },
+                },
+                images: {
+                    orderBy: {
+                        order: "asc",
+                    },
                 },
             },
-            images: {
-                orderBy: {
-                    order: "asc",
-                },
-            },
-        },
-    });
+        });
 
     if (!location) {
         return <h1>Location not found</h1>;
@@ -45,10 +53,14 @@ export default async function LocationGalleryPage({
             }}
         >
             <Stack gap="xl">
-                <LocationHeader location={location} />
+                <LocationHeader
+                    location={location}
+                />
 
                 <LocationNavigation
-                    locationId={location.id}
+                    locationId={
+                        location.id
+                    }
                 />
 
                 <Card
@@ -58,31 +70,51 @@ export default async function LocationGalleryPage({
                     withBorder
                     bg="#161616"
                     style={{
-                        borderColor: "#292929",
+                        borderColor:
+                            "#292929",
                     }}
                 >
                     <Stack gap="md">
-                        <div>
-                            <Title order={3}>
-                                Gallery
-                            </Title>
+                        <Group
+                            justify="space-between"
+                            align="flex-start"
+                        >
+                            <div>
+                                <Title order={3}>
+                                    Gallery
+                                </Title>
 
-                            <Text
-                                c="dimmed"
-                                size="sm"
-                                mt={2}
-                            >
-                                Images from this location.
-                            </Text>
-                        </div>
+                                <Text
+                                    c="dimmed"
+                                    size="sm"
+                                    mt={2}
+                                >
+                                    Images from this location.
+                                </Text>
+                            </div>
 
-                        {location.images.length === 0 ? (
+                            <LocationGalleryAdd
+                                locationId={
+                                    location.id
+                                }
+                            />
+                        </Group>
+
+                        {location.images
+                            .length ===
+                        0 ? (
                             <Text c="dimmed">
-                                No images have been added yet.
+                                No images have been
+                                added yet.
                             </Text>
                         ) : (
                             <LocationGalleryGrid
-                                images={location.images}
+                                locationId={
+                                    location.id
+                                }
+                                images={
+                                    location.images
+                                }
                             />
                         )}
                     </Stack>

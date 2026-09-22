@@ -7,7 +7,7 @@ import {
     Title,
     Tooltip,
 } from "@mantine/core";
-import { Pencil, Plus } from "lucide-react";
+import { Pencil, Plus, HeartHandshake } from "lucide-react";
 
 import { prisma } from "@/lib/prisma";
 import DeleteButton from "@/app/components/DeleteButton";
@@ -137,31 +137,31 @@ export default async function ColonistsPage({
      */
 
     const statusFilter =
-    params.status === "alive"
-        ? {
-            isDead: false,
-        }
-        : params.status === "dead"
+        params.status === "alive"
             ? {
-                isDead: true,
+                isDead: false,
             }
-            : params.status === "deadKnown"
+            : params.status === "dead"
                 ? {
                     isDead: true,
-                    OR: [
-                        { deathYear: { not: null } },
-                        { deathMonth: { not: null } },
-                        { deathDay: { not: null } },
-                    ],
                 }
-                : params.status === "deadUnknown"
+                : params.status === "deadKnown"
                     ? {
                         isDead: true,
-                        deathYear: null,
-                        deathMonth: null,
-                        deathDay: null,
+                        OR: [
+                            { deathYear: { not: null } },
+                            { deathMonth: { not: null } },
+                            { deathDay: { not: null } },
+                        ],
                     }
-                    : {};
+                    : params.status === "deadUnknown"
+                        ? {
+                            isDead: true,
+                            deathYear: null,
+                            deathMonth: null,
+                            deathDay: null,
+                        }
+                        : {};
 
     /*
 * ---------------------------------------------------------
@@ -394,19 +394,33 @@ export default async function ColonistsPage({
                         Browse the colonists of the colony.
                     </Text>
                 </div>
+                <Group gap="xs">
+                    <Tooltip label="Find compatible partners">
+                        <ActionIcon
+                            component="a"
+                            href="/colonists/compatibility"
+                            size="lg"
+                            variant="filled"
+                            color="mesa"
+                            aria-label="Find compatible partners"
+                        >
+                            <HeartHandshake size={20} />
+                        </ActionIcon>
+                    </Tooltip>
 
-                <Tooltip label="Add colonist">
-                    <ActionIcon
-                        component="a"
-                        href="/colonists/create"
-                        size="lg"
-                        variant="filled"
-                        color="mesa"
-                        aria-label="Add colonist"
-                    >
-                        <Plus size={20} />
-                    </ActionIcon>
-                </Tooltip>
+                    <Tooltip label="Add colonist">
+                        <ActionIcon
+                            component="a"
+                            href="/colonists/create"
+                            size="lg"
+                            variant="filled"
+                            color="mesa"
+                            aria-label="Add colonist"
+                        >
+                            <Plus size={20} />
+                        </ActionIcon>
+                    </Tooltip>
+                </Group>
             </Group>
             <ColonistFilters
                 legacyOptions={legacyOptions}

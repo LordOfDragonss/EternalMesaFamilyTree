@@ -1,4 +1,14 @@
-import { Stack, Text } from "@mantine/core";
+import {
+    ActionIcon,
+    Card,
+    Group,
+    Select,
+    Stack,
+    Text,
+    Title,
+    Tooltip,
+} from "@mantine/core";
+import { Plus, X } from "lucide-react";
 
 import { prisma } from "@/lib/prisma";
 import LocationHeader from "../LocationHeader";
@@ -48,6 +58,35 @@ export default async function LocationColonistsPage({
         return <h1>Location not found</h1>;
     }
 
+    const memberIds = location.colonists.map(
+        (colonist) => colonist.id
+    );
+
+    const availableColonists = await prisma.colonist.findMany({
+        where: {
+            id: {
+                notIn: memberIds,
+            },
+        },
+        orderBy: [
+            {
+                firstName: "asc",
+            },
+            {
+                lastName: "asc",
+            },
+        ],
+    });
+
+    const colonistOptions = availableColonists.map((colonist) => ({
+        value: colonist.id.toString(),
+        label: `${colonist.firstName}${
+            colonist.nickname
+                ? ` "${colonist.nickname}"`
+                : ""
+        } ${colonist.lastName}`,
+    }));
+
     return (
         <main
             style={{
@@ -63,34 +102,134 @@ export default async function LocationColonistsPage({
 
                 <LocationNavigation locationId={location.id} />
 
-                <Stack gap="xs">
-                    {location.colonists.length === 0 ? (
-                        <Text c="dimmed">
-                            No colonists are associated with this location.
-                        </Text>
-                    ) : (
-                        location.colonists.map((colonist) => (
+                <Card
+                    shadow="sm"
+                    padding="xl"
+                    radius="md"
+                    withBorder
+                    bg="#161616"
+                    style={{
+                        borderColor: "#292929",
+                    }}
+                >
+                    <Stack gap="md">
+                        <div>
+                            <Title order={3}>
+                                Colonists
+                            </Title>
+
                             <Text
-                                key={colonist.id}
-                                component="a"
-                                href={`/colonists/${colonist.id}`}
-                                fw={500}
-                                style={{
-                                    color:
-                                        colonist.legacy?.color ??
-                                        "var(--mantine-color-text)",
-                                    textDecoration: "none",
-                                }}
+                                c="dimmed"
+                                size="sm"
+                                mt={2}
                             >
-                                {colonist.firstName}
-                                {colonist.nickname &&
-                                    ` "${colonist.nickname}"`}
-                                {" "}
-                                {colonist.lastName}
+                                Colonists associated with this location.
                             </Text>
-                        ))
-                    )}
-                </Stack>
+                        </div>
+
+                        <Stack gap="xs">
+                            {location.colonists.map((colonist) => {
+                                const legacyColor =
+                                    colonist.legacy?.color ??
+                                    "var(--mantine-color-text)";
+
+                                return (
+                                    <Group
+                                        key={colonist.id}
+                                        justify="space-between"
+                                        gap="xs"
+                                    >
+                                        <Text
+                                            component="a"
+                                            href={`/colonists/${colonist.id}`}
+                                            fw={500}
+                                            style={{
+                                                color: legacyColor,
+                                                textDecoration: "none",
+                                            }}
+                                        >
+                                            {colonist.firstName}
+                                            {colonist.nickname &&
+                                                ` "${colonist.nickname}"`}
+                                            {" "}
+                                            {colonist.lastName}
+                                        </Text>
+
+                                        <form
+                                            action={`/api/locations/${location.id}/colonists/${colonist.id}/delete`}
+                                            method="POST"
+                                        >
+                                            <Tooltip label="Remove colonist">
+                                                <ActionIcon
+                                                    type="submit"
+                                                    variant="subtle"
+                                                    color="red"
+                                                    size="sm"
+                                                    aria-label={`Remove ${colonist.firstName} ${colonist.lastName}`}
+                                                >
+                                                    <X size={16} />
+                                                </ActionIcon>
+                                            </Tooltip>
+                                        </form>
+                                    </Group>
+                                );
+                            })}
+
+                            {location.colonists.length === 0 && (
+                                <Text c="dimmed">
+                                    No colonists are associated with this
+                                    location yet.
+                                </Text>
+                            )}
+                        </Stack>
+
+                        {availableColonists.length > 0 && (
+                            <form
+                                action={`/api/locations/${location.id}/colonists`}
+                                method="POST"
+                            >
+                                <Group
+                                    align="flex-end"
+                                    gap="xs"
+                                >
+                                    <Select
+                                        name="colonistId"
+                                        label="Add colonist"
+                                        placeholder="Select a colonist"
+                                        data={colonistOptions}
+                                        searchable
+                                        style={{
+                                            flex: 1,
+                                        }}
+                                    />
+
+                                    <Tooltip label="Add colonist">
+                                        <ActionIcon
+                                            type="submit"
+                                            size="lg"
+                                            variant="filled"
+                                            color="mesa"
+                                            aria-label="Add colonist"
+                                        >
+                                            <Plus size={20} />
+                                        </ActionIcon>
+                                    </Tooltip>
+                                </Group>
+                            </form>
+                        )}
+
+                        {availableColonists.length === 0 &&
+                            location.colonists.length > 0 && (
+                                <Text
+                                    size="sm"
+                                    c="dimmed"
+                                >
+                                    All colonists are already associated
+                                    with this location.
+                                </Text>
+                            )}
+                    </Stack>
+                </Card>
             </Stack>
         </main>
     );

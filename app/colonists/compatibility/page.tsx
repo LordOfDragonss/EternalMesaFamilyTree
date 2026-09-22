@@ -26,6 +26,24 @@ export default async function CompatibilityPage() {
                 },
             },
 
+            groups: {
+                select: {
+                    group: {
+                        select: {
+                            id: true,
+                            name: true,
+                        },
+                    },
+                },
+            },
+
+            locations: {
+                select: {
+                    id: true,
+                    name: true,
+                },
+            },
+
             // Only biological parents count toward blood relation.
             parents: {
                 where: {
@@ -60,9 +78,6 @@ export default async function CompatibilityPage() {
         },
     });
 
-    /*
-     * Map each colonist to their biological parents.
-     */
     const parentMap = new Map<number, number[]>();
 
     for (const colonist of colonists) {
@@ -73,13 +88,12 @@ export default async function CompatibilityPage() {
     }
 
     /*
-     * Get all biological ancestors within three generations.
-     *
+     * Get all ancestors within three generations.
      * 1 = parent
      * 2 = grandparent
      * 3 = great-grandparent
      *
-     * If the same ancestor is reached through multiple paths,
+     * If the same ancestor is reached by multiple paths,
      * retain the shortest distance.
      */
     function getAncestors(colonistId: number) {
@@ -113,7 +127,8 @@ export default async function CompatibilityPage() {
 
             ancestors.set(current.id, current.generation);
 
-            const grandparents = parentMap.get(current.id) ?? [];
+            const grandparents =
+                parentMap.get(current.id) ?? [];
 
             for (const parentId of grandparents) {
                 queue.push({
@@ -131,9 +146,6 @@ export default async function CompatibilityPage() {
         );
     }
 
-    /*
-     * Only living colonists can be selected as potential matches.
-     */
     const livingColonists = colonists.filter(
         (colonist) => !colonist.isDead
     );
@@ -148,8 +160,18 @@ export default async function CompatibilityPage() {
         imageURL: colonist.imageURL,
         legacy: colonist.legacy,
 
-        // A colonist is partnered if they have a current
-        // Lover or Married relationship recorded on either side.
+        groups: colonist.groups.map((membership) => ({
+            id: membership.group.id,
+            name: membership.group.name,
+        })),
+
+        locations: colonist.locations.map((location) => ({
+            id: location.id,
+            name: location.name,
+        })),
+
+        // A colonist is partnered if they have a Lover or Married
+        // relationship recorded on either side.
         isPartnered:
             colonist.partnerARelationships.length > 0 ||
             colonist.partnerBRelationships.length > 0,

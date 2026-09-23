@@ -17,7 +17,11 @@ export async function POST(
         const type = formData.get("type") as
             | "Lover"
             | "Married"
-            | "Ex"
+            | "Ex";
+
+        const source = new URL(request.url).searchParams.get(
+            "source"
+        );
 
         // Make sure partner A exists
         const partnerA = await prisma.colonist.findUnique({
@@ -165,6 +169,17 @@ export async function POST(
             },
         });
 
+        // Compatibility Finder requests stay on the finder page.
+        if (source === "compatibility") {
+            return Response.json({
+                success: true,
+                partnerAId,
+                partnerBId,
+                type,
+            });
+        }
+
+        // Normal partnership creation still behaves exactly as before.
         return Response.redirect(
             new URL(
                 `/colonists/${partnerAId}/edit`,

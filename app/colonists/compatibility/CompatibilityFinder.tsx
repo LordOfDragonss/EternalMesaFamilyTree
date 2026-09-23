@@ -16,12 +16,13 @@ import {
     Tooltip,
 } from "@mantine/core";
 import {
+    Ban,
+    CircleX,
     Crown,
+    Heart,
     MapPin,
     Orbit,
     Users,
-    CircleX,
-    Ban
 } from "lucide-react";
 
 type Ancestor = {
@@ -124,6 +125,9 @@ export default function CompatibilityFinder({
     const [excludedLocations, setExcludedLocations] =
         useState<Set<number>>(new Set());
 
+    const [partneredColonists, setPartneredColonists] =
+        useState<Set<number>>(new Set());
+
     const selectedColonist = colonists.find(
         (colonist) =>
             colonist.id.toString() === selectedId
@@ -200,6 +204,56 @@ export default function CompatibilityFinder({
         setExcludedLocations(new Set());
     }
 
+    async function makeLovers(colonistId: number) {
+        if (!selectedColonist) {
+            return;
+        }
+
+        try {
+            const formData = new FormData();
+
+            formData.append(
+                "partnerId",
+                colonistId.toString()
+            );
+
+            formData.append("type", "Lover");
+
+            const response = await fetch(
+                `/api/colonists/${selectedColonist.id}/partnerships?source=compatibility`,
+                {
+                    method: "POST",
+                    body: formData,
+                }
+            );
+
+            if (!response.ok) {
+                const data = await response
+                    .json()
+                    .catch(() => null);
+
+                console.error(
+                    "Failed to create partnership:",
+                    data?.error ??
+                        response.statusText
+                );
+
+                return;
+            }
+
+            setPartneredColonists((current) => {
+                const next = new Set(current);
+                next.add(colonistId);
+                return next;
+            });
+        } catch (error) {
+            console.error(
+                "Failed to create partnership:",
+                error
+            );
+        }
+    }
+
     const exclusionCount =
         excludedColonists.size +
         excludedLegacies.size +
@@ -227,6 +281,12 @@ export default function CompatibilityFinder({
                 }
 
                 if (candidate.isPartnered) {
+                    return false;
+                }
+
+                // Remove colonists partnered during
+                // this finder session immediately.
+                if (partneredColonists.has(candidate.id)) {
                     return false;
                 }
 
@@ -288,6 +348,7 @@ export default function CompatibilityFinder({
     }, [
         colonists,
         selectedColonist,
+        partneredColonists,
         excludedColonists,
         excludedLegacies,
         excludedGroups,
@@ -580,7 +641,9 @@ export default function CompatibilityFinder({
                                                 variant="subtle"
                                                 color="mesa"
                                                 onClick={() =>
-                                                    removeLegacyExclusion(legacy)
+                                                    removeLegacyExclusion(
+                                                        legacy
+                                                    )
                                                 }
                                                 aria-label={`Remove ${legacy} exclusion`}
                                             >
@@ -625,11 +688,15 @@ export default function CompatibilityFinder({
                                                     variant="subtle"
                                                     color="gray"
                                                     onClick={() =>
-                                                        removeGroupExclusion(id)
+                                                        removeGroupExclusion(
+                                                            id
+                                                        )
                                                     }
                                                     aria-label={`Remove ${group.name} exclusion`}
                                                 >
-                                                    <CircleX size={12} />
+                                                    <CircleX
+                                                        size={12}
+                                                    />
                                                 </ActionIcon>
                                             }
                                         >
@@ -878,6 +945,25 @@ export default function CompatibilityFinder({
                                                 justify="flex-end"
                                                 gap="xs"
                                             >
+                                                <Tooltip label="Make lovers">
+                                                    <ActionIcon
+                                                        variant="subtle"
+                                                        color="red"
+                                                        aria-label={`Make ${getColonistName(colonist)} lovers`}
+                                                        onClick={() =>
+                                                            makeLovers(
+                                                                colonist.id
+                                                            )
+                                                        }
+                                                    >
+                                                        <Heart
+                                                            size={
+                                                                18
+                                                            }
+                                                        />
+                                                    </ActionIcon>
+                                                </Tooltip>
+
                                                 <Menu
                                                     shadow="md"
                                                     width={230}
@@ -900,11 +986,23 @@ export default function CompatibilityFinder({
                                                     </Menu.Target>
 
                                                     <Menu.Dropdown>
-                                                        <Menu.Label>Exclude from this session</Menu.Label>
+                                                        <Menu.Label>
+                                                            Exclude from this session
+                                                        </Menu.Label>
 
                                                         <Menu.Item
-                                                            leftSection={<Users size={16} />}
-                                                            onClick={() => addColonistExclusion(colonist.id)}
+                                                            leftSection={
+                                                                <Users
+                                                                    size={
+                                                                        16
+                                                                    }
+                                                                />
+                                                            }
+                                                            onClick={() =>
+                                                                addColonistExclusion(
+                                                                    colonist.id
+                                                                )
+                                                            }
                                                         >
                                                             This colonist
                                                         </Menu.Item>
@@ -913,45 +1011,101 @@ export default function CompatibilityFinder({
                                                             <Menu.Item
                                                                 leftSection={
                                                                     <Crown
-                                                                        size={16}
-                                                                        color={colonist.legacy.color ?? undefined}
+                                                                        size={
+                                                                            16
+                                                                        }
+                                                                        color={
+                                                                            colonist
+                                                                                .legacy
+                                                                                .color ??
+                                                                            undefined
+                                                                        }
                                                                     />
                                                                 }
                                                                 onClick={() =>
-                                                                    addLegacyExclusion(colonist.legacy!.name)
+                                                                    addLegacyExclusion(
+                                                                        colonist
+                                                                            .legacy!
+                                                                            .name
+                                                                    )
                                                                 }
                                                             >
                                                                 <span
                                                                     style={{
-                                                                        color: colonist.legacy.color ?? undefined,
+                                                                        color:
+                                                                            colonist
+                                                                                .legacy
+                                                                                .color ??
+                                                                            undefined,
                                                                     }}
                                                                 >
-                                                                    Legacy: {colonist.legacy.name}
+                                                                    Legacy:{" "}
+                                                                    {
+                                                                        colonist
+                                                                            .legacy
+                                                                            .name
+                                                                    }
                                                                 </span>
                                                             </Menu.Item>
                                                         )}
 
-                                                        {colonist.groups.length > 0 &&
-                                                            colonist.groups.map((group) => (
-                                                                <Menu.Item
-                                                                    key={`group-${group.id}`}
-                                                                    leftSection={<Orbit size={16} />}
-                                                                    onClick={() => addGroupExclusion(group.id)}
-                                                                >
-                                                                    Group: {group.name}
-                                                                </Menu.Item>
-                                                            ))}
+                                                        {colonist.groups.length >
+                                                            0 &&
+                                                            colonist.groups.map(
+                                                                (
+                                                                    group
+                                                                ) => (
+                                                                    <Menu.Item
+                                                                        key={`group-${group.id}`}
+                                                                        leftSection={
+                                                                            <Orbit
+                                                                                size={
+                                                                                    16
+                                                                                }
+                                                                            />
+                                                                        }
+                                                                        onClick={() =>
+                                                                            addGroupExclusion(
+                                                                                group.id
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        Group:{" "}
+                                                                        {
+                                                                            group.name
+                                                                        }
+                                                                    </Menu.Item>
+                                                                )
+                                                            )}
 
-                                                        {colonist.locations.length > 0 &&
-                                                            colonist.locations.map((location) => (
-                                                                <Menu.Item
-                                                                    key={`location-${location.id}`}
-                                                                    leftSection={<MapPin size={16} />}
-                                                                    onClick={() => addLocationExclusion(location.id)}
-                                                                >
-                                                                    Location: {location.name}
-                                                                </Menu.Item>
-                                                            ))}
+                                                        {colonist.locations.length >
+                                                            0 &&
+                                                            colonist.locations.map(
+                                                                (
+                                                                    location
+                                                                ) => (
+                                                                    <Menu.Item
+                                                                        key={`location-${location.id}`}
+                                                                        leftSection={
+                                                                            <MapPin
+                                                                                size={
+                                                                                    16
+                                                                                }
+                                                                            />
+                                                                        }
+                                                                        onClick={() =>
+                                                                            addLocationExclusion(
+                                                                                location.id
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        Location:{" "}
+                                                                        {
+                                                                            location.name
+                                                                        }
+                                                                    </Menu.Item>
+                                                                )
+                                                            )}
                                                     </Menu.Dropdown>
                                                 </Menu>
                                             </Group>

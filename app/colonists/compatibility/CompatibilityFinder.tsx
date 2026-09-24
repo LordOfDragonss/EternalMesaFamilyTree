@@ -235,7 +235,7 @@ export default function CompatibilityFinder({
                 console.error(
                     "Failed to create partnership:",
                     data?.error ??
-                        response.statusText
+                    response.statusText
                 );
 
                 return;
@@ -246,6 +246,10 @@ export default function CompatibilityFinder({
                 next.add(colonistId);
                 return next;
             });
+
+            setSelectedId(null);
+
+
         } catch (error) {
             console.error(
                 "Failed to create partnership:",

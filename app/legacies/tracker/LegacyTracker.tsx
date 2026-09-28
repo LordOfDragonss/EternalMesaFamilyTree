@@ -1597,10 +1597,7 @@ export default function LegacyTracker({
                                             </div>
 
                                             <div>
-                                                <Group
-                                                    justify="space-between"
-                                                    mb="sm"
-                                                >
+                                                <Group justify="space-between" mb="sm">
                                                     <Text fw={600}>
                                                         Family
                                                     </Text>
@@ -1613,104 +1610,115 @@ export default function LegacyTracker({
                                                                 : "mesa"
                                                         }
                                                     >
-                                                        {
-                                                            livingAdultsWithChildren.length
-                                                        }{" "}
-                                                        with recorded children
+                                                        {livingAdultsWithChildren.length} with recorded children
                                                     </Badge>
                                                 </Group>
 
-                                                {livingAdultsWithChildren.length >
-                                                    0 ? (
+                                                {livingAdultsWithChildren.length > 0 && (
                                                     <Stack gap="xs">
-                                                        {livingAdultsWithChildren.map(
-                                                            (
-                                                                adult
-                                                            ) => (
+                                                        {livingAdultsWithChildren.map((adult) => (
+                                                            <Card
+                                                                key={adult.id}
+                                                                padding="sm"
+                                                                radius="md"
+                                                                withBorder
+                                                                bg="#111111"
+                                                                style={{
+                                                                    borderColor:
+                                                                        legacy.color ?? "#292929",
+                                                                }}
+                                                            >
+                                                                <a
+                                                                    href={`/colonists/${adult.id}`}
+                                                                    style={{
+                                                                        textDecoration: "none",
+                                                                    }}
+                                                                >
+                                                                    <Text fw={500} c="white">
+                                                                        {getColonistName(adult)}
+                                                                    </Text>
+
+                                                                    <Text size="xs" c="dimmed">
+                                                                        {adult.children.length} recorded{" "}
+                                                                        {adult.children.length === 1
+                                                                            ? "child"
+                                                                            : "children"}
+                                                                    </Text>
+                                                                </a>
+                                                            </Card>
+                                                        ))}
+                                                    </Stack>
+                                                )}
+
+                                                {livingAdultsWithoutChildren.length > 0 && (
+                                                    <div style={{ marginTop: "1rem" }}>
+                                                        <Text size="sm" fw={500} mb="xs">
+                                                            Without recorded children
+                                                        </Text>
+
+                                                        <Stack gap="xs">
+                                                            {livingAdultsWithoutChildren.map((adult) => (
                                                                 <Card
-                                                                    key={
-                                                                        adult.id
-                                                                    }
+                                                                    key={adult.id}
                                                                     padding="sm"
                                                                     radius="md"
                                                                     withBorder
                                                                     bg="#111111"
                                                                     style={{
                                                                         borderColor:
-                                                                            legacy.color ??
-                                                                            "#292929",
+                                                                            legacy.color ?? "#292929",
                                                                     }}
                                                                 >
-                                                                    <a
-                                                                        href={`/colonists/${adult.id}`}
-                                                                        style={{
-                                                                            textDecoration:
-                                                                                "none",
-                                                                        }}
+                                                                    <Group
+                                                                        justify="space-between"
+                                                                        wrap="nowrap"
                                                                     >
-                                                                        <Text
-                                                                            fw={
-                                                                                500
-                                                                            }
-                                                                            c="white"
+                                                                        <a
+                                                                            href={`/colonists/${adult.id}`}
+                                                                            style={{
+                                                                                textDecoration: "none",
+                                                                                minWidth: 0,
+                                                                            }}
                                                                         >
-                                                                            {getColonistName(
-                                                                                adult
-                                                                            )}
-                                                                        </Text>
+                                                                            <Text fw={500} c="white">
+                                                                                {getColonistName(adult)}
+                                                                            </Text>
 
-                                                                        <Text
-                                                                            size="xs"
-                                                                            c="dimmed"
-                                                                        >
-                                                                            {
-                                                                                adult
-                                                                                    .children
-                                                                                    .length
-                                                                            }{" "}
-                                                                            recorded{" "}
-                                                                            {adult
-                                                                                .children
-                                                                                .length ===
-                                                                                1
-                                                                                ? "child"
-                                                                                : "children"}
-                                                                        </Text>
-                                                                    </a>
+                                                                            <Text size="xs" c="dimmed">
+                                                                                No recorded children
+                                                                            </Text>
+                                                                        </a>
+
+                                                                        {isLivingSingle(adult) && (
+                                                                            <Tooltip label="Find compatible partner">
+                                                                                <ActionIcon
+                                                                                    component="a"
+                                                                                    href={`/colonists/compatibility?colonistId=${adult.id}`}
+                                                                                    variant="subtle"
+                                                                                    color={
+                                                                                        legacy.color
+                                                                                            ? undefined
+                                                                                            : "mesa"
+                                                                                    }
+                                                                                    aria-label={`Find compatible partner for ${getColonistName(
+                                                                                        adult
+                                                                                    )}`}
+                                                                                >
+                                                                                    <HeartHandshake size={20} />
+                                                                                </ActionIcon>
+                                                                            </Tooltip>
+                                                                        )}
+                                                                    </Group>
                                                                 </Card>
-                                                            )
-                                                        )}
-                                                    </Stack>
-                                                ) : (
-                                                    <Text
-                                                        size="sm"
-                                                        c="dimmed"
-                                                    >
-                                                        No living adults
-                                                        currently have a child
-                                                        recorded in the archive.
-                                                    </Text>
+                                                            ))}
+                                                        </Stack>
+                                                    </div>
                                                 )}
 
-                                                {livingAdultsWithoutChildren.length >
-                                                    0 &&
-                                                    livingAdultsWithChildren.length >
-                                                    0 && (
-                                                        <Text
-                                                            size="xs"
-                                                            c="dimmed"
-                                                            mt="sm"
-                                                        >
-                                                            {
-                                                                livingAdultsWithoutChildren.length
-                                                            }{" "}
-                                                            living{" "}
-                                                            {livingAdultsWithoutChildren.length ===
-                                                                1
-                                                                ? "adult has"
-                                                                : "adults have"}{" "}
-                                                            no recorded
-                                                            children.
+                                                {livingAdultsWithChildren.length === 0 &&
+                                                    livingAdultsWithoutChildren.length === 0 && (
+                                                        <Text size="sm" c="dimmed">
+                                                            No living adults currently recorded.
                                                         </Text>
                                                     )}
                                             </div>

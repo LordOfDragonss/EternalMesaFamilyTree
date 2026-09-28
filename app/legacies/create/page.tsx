@@ -6,6 +6,7 @@ import {
     Group,
     Select,
     Stack,
+    Switch,
     Text,
     Textarea,
     TextInput,
@@ -29,8 +30,8 @@ export default async function NewLegacyPage() {
     const colonistOptions = colonists.map((colonist) => ({
         value: colonist.id.toString(),
         label: `${colonist.firstName}${colonist.nickname
-                ? ` "${colonist.nickname}"`
-                : ""
+            ? ` "${colonist.nickname}"`
+            : ""
             } ${colonist.lastName}`,
     }));
 
@@ -112,6 +113,12 @@ export default async function NewLegacyPage() {
                                     name="color"
                                     label="Color"
                                     placeholder="Choose a color"
+                                />
+                                <Switch
+                                    name="trackForSuccession"
+                                    label="Track for succession"
+                                    description="Include this legacy in succession attention tracking."
+                                    defaultChecked={true}
                                 />
 
                                 <Select

@@ -63,6 +63,7 @@ type CompatibilityColonist = {
 
 type Props = {
     colonists: CompatibilityColonist[];
+    initialColonistId: string | null;
 };
 
 function getColonistName(
@@ -108,10 +109,11 @@ function areTooCloselyRelated(
 
 export default function CompatibilityFinder({
     colonists,
+    initialColonistId,
 }: Props) {
     const [selectedId, setSelectedId] = useState<
         string | null
-    >(null);
+    >(initialColonistId);
 
     const [excludedColonists, setExcludedColonists] =
         useState<Set<number>>(new Set());

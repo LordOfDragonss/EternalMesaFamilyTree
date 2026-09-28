@@ -11,6 +11,7 @@ import {
     Palette,
     Pencil,
     Plus,
+    ClipboardList,
 } from "lucide-react";
 
 import { prisma } from "@/lib/prisma";
@@ -85,6 +86,18 @@ export default async function LegaciesPage({
                     </Text>
                 </div>
                 <Group gap="xs">
+                    <Tooltip label="Legacy tracker">
+                        <ActionIcon
+                            component="a"
+                            href="/legacies/tracker"
+                            size="lg"
+                            variant="filled"
+                            color="mesa"
+                            aria-label="Legacy tracker"
+                        >
+                            <ClipboardList size={20} />
+                        </ActionIcon>
+                    </Tooltip>
                     <Tooltip label="Compare legacy colors">
                         <ActionIcon
                             component="a"

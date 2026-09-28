@@ -20,6 +20,8 @@ export async function POST(
 
         const color =
             (formData.get("color") as string)?.trim() || null;
+        const trackForSuccession =
+            formData.get("trackForSuccession") === "on";
 
         const foundingColonistValue =
             formData.get("foundingColonistId");
@@ -87,17 +89,18 @@ export async function POST(
                 name,
                 description,
                 color,
+                trackForSuccession,
 
                 foundingColonist:
                     foundingColonistId !== null
                         ? {
-                              connect: {
-                                  id: foundingColonistId,
-                              },
-                          }
+                            connect: {
+                                id: foundingColonistId,
+                            },
+                        }
                         : {
-                              disconnect: true,
-                          },
+                            disconnect: true,
+                        },
             },
         });
 

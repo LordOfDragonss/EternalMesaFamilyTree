@@ -3,7 +3,12 @@ import CompatibilityFinder from "./CompatibilityFinder";
 
 export const dynamic = "force-dynamic";
 
-export default async function CompatibilityPage() {
+export default async function CompatibilityPage({
+    searchParams,
+}: {
+    searchParams: Promise<{ colonistId?: string }>;
+}) {
+    const { colonistId } = await searchParams;
     const colonists = await prisma.colonist.findMany({
         orderBy: [
             { lastName: "asc" },
@@ -189,7 +194,10 @@ export default async function CompatibilityPage() {
                 boxSizing: "border-box",
             }}
         >
-            <CompatibilityFinder colonists={colonistData} />
+            <CompatibilityFinder
+                colonists={colonistData}
+                initialColonistId={colonistId ?? null}
+            />
         </main>
     );
 }

@@ -86,6 +86,8 @@ model Legacy {
   description String?
   color       String?
 
+  trackForSuccession Boolean @default(true)
+
   // Colonists belonging to this legacy
   members Colonist[] @relation("LegacyMembers")
 

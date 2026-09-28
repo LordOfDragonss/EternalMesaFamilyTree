@@ -12,6 +12,9 @@ export async function POST(request: Request) {
         const color =
             (formData.get("color") as string)?.trim() || null;
 
+        const trackForSuccession =
+            formData.get("trackForSuccession") === "on";
+
         const foundingColonistValue =
             formData.get("foundingColonistId");
 
@@ -59,19 +62,20 @@ export async function POST(request: Request) {
                 name,
                 description,
                 color,
+                trackForSuccession,
                 foundingColonist:
                     foundingColonistId !== null
                         ? {
-                              connect: {
-                                  id: foundingColonistId,
-                              },
-                          }
+                            connect: {
+                                id: foundingColonistId,
+                            },
+                        }
                         : undefined,
             },
         });
 
         return NextResponse.redirect(
-            new URL(`/legacies/${legacy.id}`, 
+            new URL(`/legacies/${legacy.id}`,
                 getPublicUrl(request))
         );
     } catch (error) {

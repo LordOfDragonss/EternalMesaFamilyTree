@@ -7,6 +7,8 @@ import React, {
     useState,
 } from "react";
 import Image from "next/image";
+import FamilyTreeSearch from "./FamilyTreeSearch";
+import FamilyTreeConnections from "./FamilyTreeConnections";
 
 type FamilyTreeColonist = {
     id: number;
@@ -23,11 +25,13 @@ type FamilyTreeColonist = {
 type FamilyTreeParentChild = {
     parentId: number;
     childId: number;
+    type: "Biological" | "Surrogate" | "Other";
 };
 
 type FamilyTreePartnership = {
     partnerAId: number;
     partnerBId: number;
+    type: "Lover" | "Married" | "Ex";
 };
 
 type Props = {
@@ -188,12 +192,14 @@ function buildRelationshipMaps(
                 colonist,
             ])
         );
-
     const parentsMap =
         new Map<number, number[]>();
 
     const childrenMap =
         new Map<number, number[]>();
+
+    const parentChildMap =
+        new Map<number, FamilyTreeParentChild[]>();
 
     for (const relationship of parentChildren) {
         if (!parentsMap.has(relationship.childId)) {
@@ -221,10 +227,26 @@ function buildRelationshipMaps(
             .push(
                 relationship.childId
             );
+
+        if (!parentChildMap.has(relationship.childId)) {
+            parentChildMap.set(
+                relationship.childId,
+                []
+            );
+        }
+
+        parentChildMap
+            .get(relationship.childId)!
+            .push(
+                relationship
+            );
     }
 
     const partnershipMap =
         new Map<number, Set<number>>();
+
+    const partnershipRelationshipMap =
+        new Map<number, FamilyTreePartnership[]>();
 
     for (const relationship of partnerships) {
         if (
@@ -260,6 +282,40 @@ function buildRelationshipMaps(
             .add(
                 relationship.partnerAId
             );
+
+        if (
+            !partnershipRelationshipMap.has(
+                relationship.partnerAId
+            )
+        ) {
+            partnershipRelationshipMap.set(
+                relationship.partnerAId,
+                []
+            );
+        }
+
+        if (
+            !partnershipRelationshipMap.has(
+                relationship.partnerBId
+            )
+        ) {
+            partnershipRelationshipMap.set(
+                relationship.partnerBId,
+                []
+            );
+        }
+
+        partnershipRelationshipMap
+            .get(relationship.partnerAId)!
+            .push(
+                relationship
+            );
+
+        partnershipRelationshipMap
+            .get(relationship.partnerBId)!
+            .push(
+                relationship
+            );
     }
 
     return {
@@ -267,8 +323,12 @@ function buildRelationshipMaps(
         parentsMap,
         childrenMap,
         partnershipMap,
+        parentChildMap,
+        partnershipRelationshipMap,
     };
+
 }
+
 
 /*
  * ---------------------------------------------------------
@@ -337,21 +397,23 @@ function calculateGenerations(
     childrenMap: Map<number, number[]>,
     partnershipMap: Map<number, Set<number>>
 ) {
-    const generation =
-        new Map<number, number>();
+    const generation = new Map<number, number>();
+    const componentSet = new Set(component);
 
-    const componentSet =
-        new Set(component);
+    /*
+     * First establish the normal family generations from ancestry.
+     *
+     * Parent/child relationships provide the initial structure,
+     * but they are not necessarily the final positions because
+     * partnerships can legitimately move people further down the tree.
+     */
+    const roots = component.filter((id) => {
+        const parents = parentsMap.get(id) ?? [];
 
-    const roots =
-        component.filter((id) => {
-            const parents =
-                parentsMap.get(id) ?? [];
-
-            return !parents.some((parentId) =>
-                componentSet.has(parentId)
-            );
-        });
+        return !parents.some((parentId) =>
+            componentSet.has(parentId)
+        );
+    });
 
     const queue: number[] = [];
 
@@ -361,49 +423,33 @@ function calculateGenerations(
     }
 
     while (queue.length > 0) {
-        const currentId =
-            queue.shift()!;
+        const currentId = queue.shift()!;
+        const currentGeneration = generation.get(currentId);
 
-        const currentGeneration =
-            generation.get(currentId);
+        if (currentGeneration === undefined) continue;
 
-        if (
-            currentGeneration ===
-            undefined
-        ) {
-            continue;
-        }
-
-        const children =
-            childrenMap.get(currentId) ?? [];
+        const children = childrenMap.get(currentId) ?? [];
 
         for (const childId of children) {
-            if (!componentSet.has(childId)) {
-                continue;
-            }
+            if (!componentSet.has(childId)) continue;
 
-            const proposedGeneration =
-                currentGeneration + 1;
-
-            const existingGeneration =
-                generation.get(childId);
+            const proposedGeneration = currentGeneration + 1;
+            const existingGeneration = generation.get(childId);
 
             if (
-                existingGeneration ===
-                undefined ||
-                proposedGeneration >
-                existingGeneration
+                existingGeneration === undefined ||
+                proposedGeneration > existingGeneration
             ) {
-                generation.set(
-                    childId,
-                    proposedGeneration
-                );
-
+                generation.set(childId, proposedGeneration);
                 queue.push(childId);
             }
         }
     }
 
+    /*
+     * Anything disconnected from the ancestry structure starts at
+     * generation 0.
+     */
     for (const id of component) {
         if (!generation.has(id)) {
             generation.set(id, 0);
@@ -411,82 +457,138 @@ function calculateGenerations(
     }
 
     /*
-     * Partnership groups are aligned to the deepest generation
-     * occupied by any member.
+     * Partnerships can legitimately move people further down the tree.
      *
-     * This is intentionally unchanged.
+     * IMPORTANT:
+     * We do NOT protect parents from being moved down.
+     *
+     * If an Eternal such as Ellen forms a later-life relationship with
+     * someone from a much later generation, Ellen can move down with
+     * that partner. Her descendants must then follow her.
+     *
+     * Therefore we repeatedly propagate:
+     *
+     *   partnership -> same generation
+     *   parent      -> child is at least parent + 1
+     *
+     * until no generation changes remain.
+     *
+     * Both operations only ever increase a generation number, so this
+     * naturally settles once all relationship consequences have
+     * propagated through the component.
      */
-    const visited =
-        new Set<number>();
+    let changed = true;
+    let iterations = 0;
+    const maxIterations = Math.max(component.length * 2, 1);
 
-    for (const id of component) {
-        if (visited.has(id)) {
-            continue;
-        }
+    while (changed && iterations < maxIterations) {
+        changed = false;
+        iterations++;
 
-        const partnershipGroup: number[] = [];
+        /*
+         * First propagate partnership generations.
+         *
+         * A partnership group is placed at its deepest current
+         * generation. This allows either partner to pull the other
+         * downward.
+         */
+        const visited = new Set<number>();
 
-        const queue = [id];
+        for (const id of component) {
+            if (visited.has(id)) continue;
 
-        visited.add(id);
+            const partnershipGroup: number[] = [];
+            const partnershipQueue = [id];
+            visited.add(id);
 
-        while (queue.length > 0) {
-            const currentId =
-                queue.shift()!;
+            while (partnershipQueue.length > 0) {
+                const currentId = partnershipQueue.shift()!;
+                partnershipGroup.push(currentId);
 
-            partnershipGroup.push(
-                currentId
-            );
+                const partners =
+                    partnershipMap.get(currentId) ??
+                    new Set<number>();
 
-            const partners =
-                partnershipMap.get(
-                    currentId
-                ) ??
-                new Set<number>();
+                for (const partnerId of partners) {
+                    if (
+                        !componentSet.has(partnerId) ||
+                        visited.has(partnerId)
+                    ) {
+                        continue;
+                    }
 
-            for (const partnerId of partners) {
-                if (
-                    !componentSet.has(
-                        partnerId
-                    ) ||
-                    visited.has(
-                        partnerId
-                    )
-                ) {
-                    continue;
+                    visited.add(partnerId);
+                    partnershipQueue.push(partnerId);
                 }
-
-                visited.add(partnerId);
-                queue.push(partnerId);
             }
-        }
 
-        if (
-            partnershipGroup.length <=
-            1
-        ) {
-            continue;
-        }
+            if (partnershipGroup.length <= 1) continue;
 
-        const targetGeneration =
-            Math.max(
+            const targetGeneration = Math.max(
                 ...partnershipGroup.map(
-                    (memberId) =>
-                        generation.get(
-                            memberId
-                        ) ?? 0
+                    (memberId) => generation.get(memberId) ?? 0
                 )
             );
 
-        for (
-            const memberId of
-            partnershipGroup
-        ) {
-            generation.set(
-                memberId,
-                targetGeneration
-            );
+            for (const memberId of partnershipGroup) {
+                const currentGeneration =
+                    generation.get(memberId) ?? 0;
+
+                if (currentGeneration < targetGeneration) {
+                    generation.set(memberId, targetGeneration);
+                    changed = true;
+                }
+            }
         }
+
+        /*
+         * Now propagate any generation changes through the family tree.
+         *
+         * This is the part that fixes the Ellen -> Brandy problem.
+         *
+         * If Ellen moves from generation 1 to generation 3 because
+         * of Topaz, Brandy is raised from generation 2 to generation 4.
+         *
+         * The same applies recursively to any descendants.
+         */
+        for (const parentId of component) {
+            const parentGeneration =
+                generation.get(parentId) ?? 0;
+
+            const children = childrenMap.get(parentId) ?? [];
+
+            for (const childId of children) {
+                if (!componentSet.has(childId)) continue;
+
+                const minimumChildGeneration =
+                    parentGeneration + 1;
+
+                const currentChildGeneration =
+                    generation.get(childId) ?? 0;
+
+                if (
+                    currentChildGeneration <
+                    minimumChildGeneration
+                ) {
+                    generation.set(
+                        childId,
+                        minimumChildGeneration
+                    );
+
+                    changed = true;
+                }
+            }
+        }
+    }
+
+    if (iterations >= maxIterations && DEBUG_LAYOUT) {
+        console.warn(
+            "[FamilyTree] Generation propagation reached iteration limit",
+            {
+                component,
+                generations: Object.fromEntries(generation),
+            }
+        );
     }
 
     return generation;
@@ -737,7 +839,7 @@ function buildBranchOrder(
 
         if (
             existingDepth ===
-                undefined ||
+            undefined ||
             depth < existingDepth
         ) {
             branchDepth.set(
@@ -940,11 +1042,11 @@ function buildBranchOrder(
     ) {
         let bestPair:
             | {
-                  a: number;
-                  b: number;
-                  totalDepth: number;
-                  depthDifference: number;
-              }
+                a: number;
+                b: number;
+                totalDepth: number;
+                depthDifference: number;
+            }
             | undefined;
 
         const membersA =
@@ -1008,12 +1110,12 @@ function buildBranchOrder(
                 if (
                     !bestPair ||
                     candidate.totalDepth <
-                        bestPair.totalDepth ||
+                    bestPair.totalDepth ||
                     (
                         candidate.totalDepth ===
-                            bestPair.totalDepth &&
+                        bestPair.totalDepth &&
                         candidate.depthDifference <
-                            bestPair.depthDifference
+                        bestPair.depthDifference
                     )
                 ) {
                     bestPair =
@@ -1246,7 +1348,7 @@ function buildBranchOrder(
         ) {
             const branchId =
                 orderedBranches[
-                    sourceIndex
+                sourceIndex
                 ];
 
             let bestOrder =
@@ -1379,7 +1481,7 @@ function buildBranchOrder(
 
             if (
                 existingRank ===
-                    undefined ||
+                undefined ||
                 rank < existingRank
             ) {
                 colonistBranchRank.set(
@@ -1591,45 +1693,241 @@ function buildBranchOrder(
  * Partnership groups
  * ---------------------------------------------------------
  */
-
 function buildLayoutGroups(
     ids: number[],
     generationMap: Map<number, number>,
     partnershipMap: Map<number, Set<number>>
 ) {
     const groups: LayoutGroup[] = [];
-
-    const visited =
-        new Set<number>();
-
-    const idSet =
-        new Set(ids);
-
+    const visited = new Set<number>();
+    const idSet = new Set(ids);
     let groupId = 0;
 
-    for (const id of ids) {
-        if (visited.has(id)) {
-            continue;
+    /*
+     * Partnership-connected groups are ordered based on their actual
+     * relationship graph rather than simply putting the colonist with
+     * the most partners in the middle.
+     *
+     * The goal is to keep partnership edges short and avoid putting an
+     * unrelated colonist between two partners.
+     */
+    function orderPartnershipGroup(memberIds: number[]) {
+        if (memberIds.length <= 2) {
+            return memberIds;
         }
 
+        const memberSet = new Set(memberIds);
+
+        const getPartners = (id: number) =>
+            Array.from(partnershipMap.get(id) ?? []).filter(
+                (partnerId) => memberSet.has(partnerId)
+            );
+
+        /*
+         * Start with the member having the most relationships.
+         *
+         * This gives us a useful center for star-shaped relationship
+         * groups, while the ordering passes below handle more complex
+         * chains.
+         */
+        const center = memberIds.reduce((bestId, currentId) => {
+            const bestDegree = getPartners(bestId).length;
+            const currentDegree = getPartners(currentId).length;
+
+            if (currentDegree > bestDegree) {
+                return currentId;
+            }
+
+            return bestId;
+        }, memberIds[0]);
+
+        /*
+         * Build an initial path by repeatedly choosing the closest
+         * unplaced partner.
+         *
+         * For the common case:
+         *
+         *     Lover ── Topaz ── Ellen ── Grindu
+         *
+         * this produces the desired contiguous relationship chain.
+         */
+        const ordered: number[] = [center];
+        const placed = new Set<number>([center]);
+
+        let currentId = center;
+
+        while (placed.size < memberIds.length) {
+            const candidates = getPartners(currentId).filter(
+                (partnerId) => !placed.has(partnerId)
+            );
+
+            if (candidates.length > 0) {
+                /*
+                 * Prefer the candidate with the most unplaced
+                 * relationships. This keeps longer chains intact.
+                 */
+                candidates.sort((a, b) => {
+                    const aUnplaced = getPartners(a).filter(
+                        (partnerId) => !placed.has(partnerId)
+                    ).length;
+
+                    const bUnplaced = getPartners(b).filter(
+                        (partnerId) => !placed.has(partnerId)
+                    ).length;
+
+                    return bUnplaced - aUnplaced;
+                });
+
+                const nextId = candidates[0];
+
+                ordered.push(nextId);
+                placed.add(nextId);
+                currentId = nextId;
+                continue;
+            }
+
+            /*
+             * We reached the end of one relationship chain.
+             *
+             * Start the next chain with the unplaced member having
+             * the strongest connection to the existing ordering.
+             */
+            const remaining = memberIds.filter(
+                (memberId) => !placed.has(memberId)
+            );
+
+            remaining.sort((a, b) => {
+                const aConnections = getPartners(a).filter((partnerId) =>
+                    placed.has(partnerId)
+                ).length;
+
+                const bConnections = getPartners(b).filter((partnerId) =>
+                    placed.has(partnerId)
+                ).length;
+
+                return bConnections - aConnections;
+            });
+
+            const nextId = remaining[0];
+
+            ordered.push(nextId);
+            placed.add(nextId);
+            currentId = nextId;
+        }
+
+        /*
+         * The initial path is good for chains, but partnership graphs
+         * can still contain branches. Improve the ordering by repeatedly
+         * moving members closer to their partners.
+         *
+         * This is deliberately limited so the layout remains cheap even
+         * when the colony becomes large.
+         */
+        for (let pass = 0; pass < 8; pass++) {
+            let changed = false;
+
+            for (let index = 0; index < ordered.length; index++) {
+                const id = ordered[index];
+                const partners = getPartners(id);
+
+                if (partners.length === 0) continue;
+
+                const partnerIndexes = partners
+                    .map((partnerId) =>
+                        ordered.indexOf(partnerId)
+                    )
+                    .filter((partnerIndex) => partnerIndex >= 0);
+
+                if (partnerIndexes.length === 0) continue;
+
+                const averagePartnerIndex =
+                    partnerIndexes.reduce(
+                        (sum, partnerIndex) =>
+                            sum + partnerIndex,
+                        0
+                    ) / partnerIndexes.length;
+
+                /*
+                 * Don't move the node directly onto a partner.
+                 * Instead move it one position toward the center of
+                 * its partnership neighborhood.
+                 */
+                const targetIndex =
+                    averagePartnerIndex > index
+                        ? index + 1
+                        : averagePartnerIndex < index
+                            ? index - 1
+                            : index;
+
+                if (
+                    targetIndex < 0 ||
+                    targetIndex >= ordered.length ||
+                    targetIndex === index
+                ) {
+                    continue;
+                }
+
+                /*
+                 * Only swap when the swap improves the total partnership
+                 * distance.
+                 */
+                const distanceBefore = partners.reduce(
+                    (sum, partnerId) =>
+                        sum +
+                        Math.abs(
+                            index -
+                            ordered.indexOf(partnerId)
+                        ),
+                    0
+                );
+
+                const swappedId = ordered[targetIndex];
+
+                const distanceAfter = partners.reduce(
+                    (sum, partnerId) => {
+                        const partnerIndex =
+                            partnerId === swappedId
+                                ? index
+                                : ordered.indexOf(partnerId);
+
+                        return (
+                            sum +
+                            Math.abs(
+                                targetIndex -
+                                partnerIndex
+                            )
+                        );
+                    },
+                    0
+                );
+
+                if (distanceAfter < distanceBefore) {
+                    ordered[index] = swappedId;
+                    ordered[targetIndex] = id;
+                    changed = true;
+                }
+            }
+
+            if (!changed) break;
+        }
+
+        return ordered;
+    }
+
+    for (const id of ids) {
+        if (visited.has(id)) continue;
+
         const memberIds: number[] = [];
-
         const queue = [id];
-
         visited.add(id);
 
         while (queue.length > 0) {
-            const currentId =
-                queue.shift()!;
+            const currentId = queue.shift()!;
 
-            memberIds.push(
-                currentId
-            );
+            memberIds.push(currentId);
 
             const partners =
-                partnershipMap.get(
-                    currentId
-                ) ??
+                partnershipMap.get(currentId) ??
                 new Set<number>();
 
             for (const partnerId of partners) {
@@ -1640,13 +1938,16 @@ function buildLayoutGroups(
                     continue;
                 }
 
+                /*
+                 * Only members on the same generation belong in the
+                 * same horizontal partnership group.
+                 *
+                 * Generation propagation has already handled the
+                 * vertical relationship before we get here.
+                 */
                 if (
-                    generationMap.get(
-                        partnerId
-                    ) !==
-                    generationMap.get(
-                        currentId
-                    )
+                    generationMap.get(partnerId) !==
+                    generationMap.get(currentId)
                 ) {
                     continue;
                 }
@@ -1656,18 +1957,22 @@ function buildLayoutGroups(
             }
         }
 
+        const orderedMembers =
+            memberIds.length > 1
+                ? orderPartnershipGroup(memberIds)
+                : memberIds;
+
         groups.push({
             id: groupId++,
-            memberIds,
-            generation:
-                generationMap.get(id) ?? 0,
-            isPartnershipGroup:
-                memberIds.length > 1,
+            memberIds: orderedMembers,
+            generation: generationMap.get(id) ?? 0,
+            isPartnershipGroup: orderedMembers.length > 1,
         });
     }
 
     return groups;
 }
+
 
 /*
  * ---------------------------------------------------------
@@ -1741,7 +2046,6 @@ function buildSiblingClusters(
  * Layout a single connected component
  * ---------------------------------------------------------
  */
-
 function layoutComponent(
     component: number[],
     parentsMap: Map<number, number[]>,
@@ -1750,29 +2054,6 @@ function layoutComponent(
     colonistMap: Map<number, FamilyTreeColonist>,
     componentOffsetX: number
 ): PositionedNode[] {
-    /*
-     * Debug relevance for this component.
-     *
-     * This has NO effect on the actual layout.
-     */
-    const debugRelevantIds =
-        component.filter((id) =>
-            isDebugRelevantColonist(
-                id,
-                parentsMap,
-                childrenMap,
-                partnershipMap
-            )
-        );
-
-    const hasRelevantDebugColonists =
-        debugRelevantIds.length > 0;
-
-    /*
-     * Vertical generation calculation.
-     *
-     * UNCHANGED.
-     */
     const generationMap =
         calculateGenerations(
             component,
@@ -1781,12 +2062,7 @@ function layoutComponent(
             partnershipMap
         );
 
-    /*
-     * Horizontal branch ordering.
-     */
-    const {
-        branchRank,
-    } =
+    const branchOrder =
         buildBranchOrder(
             component,
             parentsMap,
@@ -1855,10 +2131,6 @@ function layoutComponent(
                 a - b
         );
 
-    if (generations.length === 0) {
-        return [];
-    }
-
     const groupByColonist =
         new Map<
             number,
@@ -1887,41 +2159,11 @@ function layoutComponent(
             group.memberIds.length *
             nodeWidth +
             Math.max(
-                group.memberIds.length - 1,
-                0
+                0,
+                group.memberIds.length - 1
             ) *
             partnerSpacing
         );
-    }
-
-    /*
-     * ---------------------------------------------------------
-     * Horizontal branch rank
-     * ---------------------------------------------------------
-     */
-
-    function getGroupBranchRank(
-        group: LayoutGroup
-    ) {
-        const ranks =
-            group.memberIds
-                .map((memberId) =>
-                    branchRank.get(
-                        memberId
-                    )
-                )
-                .filter(
-                    (
-                        rank
-                    ): rank is number =>
-                        rank !== undefined
-                );
-
-        if (ranks.length === 0) {
-            return Infinity;
-        }
-
-        return Math.min(...ranks);
     }
 
     function setGroupCenter(
@@ -1953,6 +2195,37 @@ function layoutComponent(
         }
     }
 
+    function getGroupBranchRank(
+        group: LayoutGroup
+    ) {
+        const ranks =
+            group.memberIds
+                .map(
+                    (id) =>
+                        branchOrder.branchRank.get(
+                            id
+                        )
+                )
+                .filter(
+                    (
+                        rank
+                    ): rank is number =>
+                        rank !==
+                        undefined
+                );
+
+        if (
+            ranks.length ===
+            0
+        ) {
+            return Number.MAX_SAFE_INTEGER;
+        }
+
+        return Math.min(
+            ...ranks
+        );
+    }
+
     /*
      * ---------------------------------------------------------
      * Parent anchor
@@ -1967,7 +2240,8 @@ function layoutComponent(
                 colonistId
             ) ?? [];
 
-        const parentCenters: number[] = [];
+        const parentCenters: number[] =
+            [];
 
         for (const parentId of parents) {
             const parentGroup =
@@ -2003,7 +2277,10 @@ function layoutComponent(
 
         return (
             parentCenters.reduce(
-                (sum, value) =>
+                (
+                    sum,
+                    value
+                ) =>
                     sum + value,
                 0
             ) /
@@ -2020,7 +2297,8 @@ function layoutComponent(
     function getSiblingClusterAnchor(
         cluster: SiblingCluster
     ): number | null {
-        const parentCenters: number[] = [];
+        const parentCenters: number[] =
+            [];
 
         for (const parentId of cluster.parentIds) {
             const parentGroup =
@@ -2056,7 +2334,10 @@ function layoutComponent(
 
         return (
             parentCenters.reduce(
-                (sum, value) =>
+                (
+                    sum,
+                    value
+                ) =>
                     sum + value,
                 0
             ) /
@@ -2066,117 +2347,93 @@ function layoutComponent(
 
     /*
      * ---------------------------------------------------------
+     * Generation spacing
+     * ---------------------------------------------------------
+     *
+     * More groups in a generation get a little more breathing
+     * room. This is deliberately only used as collision spacing.
+     * It is NOT used to force a global left-to-right order.
+     * ---------------------------------------------------------
+     */
+
+    function getGenerationSpacing(
+        groupCount: number
+    ) {
+        return Math.min(
+            140,
+            Math.max(
+                xGap,
+                xGap +
+                Math.max(
+                    0,
+                    groupCount - 3
+                ) *
+                18
+            )
+        );
+    }
+
+    /*
+     * ---------------------------------------------------------
      * First generation
+     * ---------------------------------------------------------
+     *
+     * Use branch rank to establish the initial order only.
+     * Once positioned, collision resolution uses actual X
+     * positions rather than continually enforcing this order.
      * ---------------------------------------------------------
      */
 
     const firstGeneration =
-        [
-            ...(groupsByGeneration.get(
-                generations[0]
-            ) ?? [])
-        ].sort(
-            (a, b) => {
-                const branchDifference =
-                    getGroupBranchRank(a) -
-                    getGroupBranchRank(b);
+        groupsByGeneration.get(
+            generations[0]
+        ) ?? [];
 
-                if (
-                    branchDifference !==
-                    0
-                ) {
-                    return branchDifference;
-                }
+    firstGeneration.sort(
+        (a, b) => {
+            const rankDifference =
+                getGroupBranchRank(a) -
+                getGroupBranchRank(b);
 
-                return a.id - b.id;
+            if (
+                rankDifference !==
+                0
+            ) {
+                return rankDifference;
             }
-        );
 
-    /*
-     * ---------------------------------------------------------
-     * DEBUG: visible first-generation ordering
-     * ---------------------------------------------------------
-     */
-
-    if (
-        DEBUG_LAYOUT &&
-        hasRelevantDebugColonists
-    ) {
-        const relevantFirstGeneration =
-            firstGeneration.filter((group) =>
-                group.memberIds.some((id) =>
-                    isDebugRelevantColonist(
-                        id,
-                        parentsMap,
-                        childrenMap,
-                        partnershipMap
-                    )
-                )
+            return (
+                a.id -
+                b.id
             );
+        }
+    );
 
-        console.groupCollapsed(
-            `[FamilyTree] Generation 0 ordering — component offset ${componentOffsetX}`
-        );
+    let firstCursor = 0;
 
-        console.table(
-            relevantFirstGeneration.map(
-                (group) => ({
-                    groupId:
-                        group.id,
-
-                    members:
-                        getDebugNames(
-                            group.memberIds,
-                            colonistMap
-                        ),
-
-                    generation:
-                        group.generation,
-
-                    branchRank:
-                        getGroupBranchRank(
-                            group
-                        ),
-
-                    width:
-                        getGroupWidth(
-                            group
-                        ),
-                })
-            )
-        );
-
-        console.log(
-            "These groups are placed LEFT → RIGHT in this exact order."
-        );
-
-        console.groupEnd();
-    }
-
-    let initialCursor =
-        componentOffsetX;
-
-    for (const group of firstGeneration) {
+    for (
+        const group of
+        firstGeneration
+    ) {
         const width =
             getGroupWidth(group);
 
-        const center =
-            initialCursor +
-            width / 2;
-
         setGroupCenter(
             group,
-            center
+            firstCursor +
+            width / 2
         );
 
-        initialCursor +=
+        firstCursor +=
             width +
-            minimumNodeSpacing;
+            getGenerationSpacing(
+                firstGeneration.length
+            );
     }
 
     /*
      * ---------------------------------------------------------
-     * Subsequent generations
+     * Remaining generations
      * ---------------------------------------------------------
      */
 
@@ -2188,32 +2445,13 @@ function layoutComponent(
     ) {
         const generation =
             generations[
-            generationIndex
+                generationIndex
             ];
 
         const generationGroups =
-            [
-                ...(
-                    groupsByGeneration.get(
-                        generation
-                    ) ?? []
-                )
-            ].sort(
-                (a, b) => {
-                    const branchDifference =
-                        getGroupBranchRank(a) -
-                        getGroupBranchRank(b);
-
-                    if (
-                        branchDifference !==
-                        0
-                    ) {
-                        return branchDifference;
-                    }
-
-                    return a.id - b.id;
-                }
-            );
+            groupsByGeneration.get(
+                generation
+            ) ?? [];
 
         if (
             generationGroups.length ===
@@ -2222,16 +2460,60 @@ function layoutComponent(
             continue;
         }
 
+        /*
+         * Initial ordering only.
+         *
+         * We do NOT use this order as a hard spatial constraint.
+         */
+        generationGroups.sort(
+            (a, b) => {
+                const rankDifference =
+                    getGroupBranchRank(a) -
+                    getGroupBranchRank(b);
+
+                if (
+                    rankDifference !==
+                    0
+                ) {
+                    return rankDifference;
+                }
+
+                return (
+                    a.id -
+                    b.id
+                );
+            }
+        );
+
         const desiredCenters =
-            new Map<number, number>();
+            new Map<
+                number,
+                number
+            >();
 
         /*
-         * Calculate relationship-based desired positions.
+         * -----------------------------------------------------
+         * Determine relationship-based desired positions
+         * -----------------------------------------------------
          */
-        for (const group of generationGroups) {
-            const targets: number[] = [];
 
-            if (group.isPartnershipGroup) {
+        for (
+            const group of
+            generationGroups
+        ) {
+            const targets: number[] =
+                [];
+
+            /*
+             * Partnership groups.
+             *
+             * Each member can have a different family anchor,
+             * so calculate the group center required for each
+             * member and average those targets.
+             */
+            if (
+                group.isPartnershipGroup
+            ) {
                 for (
                     let index = 0;
                     index <
@@ -2239,7 +2521,9 @@ function layoutComponent(
                     index++
                 ) {
                     const memberId =
-                        group.memberIds[index];
+                        group.memberIds[
+                            index
+                        ];
 
                     const parentAnchor =
                         getParentAnchor(
@@ -2254,16 +2538,18 @@ function layoutComponent(
                     }
 
                     const width =
-                        getGroupWidth(group);
+                        getGroupWidth(
+                            group
+                        );
 
                     const memberOffset =
+                        -width / 2 +
+                        nodeWidth / 2 +
                         index *
                         (
                             nodeWidth +
                             partnerSpacing
-                        ) +
-                        nodeWidth / 2 -
-                        width / 2;
+                        );
 
                     targets.push(
                         parentAnchor -
@@ -2272,14 +2558,28 @@ function layoutComponent(
                 }
             }
 
+            /*
+             * Sibling cluster anchor.
+             */
             if (
                 targets.length ===
                 0
             ) {
                 const cluster =
-                    siblingClusterByMember.get(
-                        group.memberIds[0]
-                    );
+                    group.memberIds
+                        .map(
+                            (id) =>
+                                siblingClusterByMember.get(
+                                    id
+                                )
+                        )
+                        .find(
+                            (
+                                value
+                            ): value is SiblingCluster =>
+                                value !==
+                                undefined
+                        );
 
                 if (cluster) {
                     const anchor =
@@ -2298,6 +2598,9 @@ function layoutComponent(
                 }
             }
 
+            /*
+             * Direct parent anchor.
+             */
             if (
                 targets.length ===
                 0
@@ -2317,18 +2620,43 @@ function layoutComponent(
                 }
             }
 
+            /*
+             * No visible family anchor.
+             *
+             * Use branch rank as a fallback position. This is
+             * only the initial desired position; it is NOT later
+             * enforced as a global ordering rule.
+             */
             if (
                 targets.length ===
                 0
             ) {
-                targets.push(
-                    componentOffsetX
-                );
+                const rank =
+                    getGroupBranchRank(
+                        group
+                    );
+
+                if (
+                    rank !==
+                    Number.MAX_SAFE_INTEGER
+                ) {
+                    targets.push(
+                        rank *
+                        minimumNodeSpacing
+                    );
+                } else {
+                    targets.push(
+                        0
+                    );
+                }
             }
 
             const desired =
                 targets.reduce(
-                    (sum, value) =>
+                    (
+                        sum,
+                        value
+                    ) =>
                         sum + value,
                     0
                 ) /
@@ -2349,7 +2677,15 @@ function layoutComponent(
         const processedClusters =
             new Set<number>();
 
-        for (const cluster of siblingClusters) {
+        const generationSpacing =
+            getGenerationSpacing(
+                generationGroups.length
+            );
+
+        for (
+            const cluster of
+            siblingClusters
+        ) {
             if (
                 cluster.generation !==
                 generation
@@ -2371,10 +2707,11 @@ function layoutComponent(
 
             const clusterGroups =
                 cluster.memberIds
-                    .map((memberId) =>
-                        groupByColonist.get(
-                            memberId
-                        )
+                    .map(
+                        (memberId) =>
+                            groupByColonist.get(
+                                memberId
+                            )
                     )
                     .filter(
                         (
@@ -2405,18 +2742,21 @@ function layoutComponent(
 
             clusterGroups.sort(
                 (a, b) => {
-                    const branchDifference =
+                    const rankDifference =
                         getGroupBranchRank(a) -
                         getGroupBranchRank(b);
 
                     if (
-                        branchDifference !==
+                        rankDifference !==
                         0
                     ) {
-                        return branchDifference;
+                        return rankDifference;
                     }
 
-                    return a.id - b.id;
+                    return (
+                        a.id -
+                        b.id
+                    );
                 }
             );
 
@@ -2436,15 +2776,20 @@ function layoutComponent(
                     clusterGroups.length -
                     1
                 ) *
-                xGap;
+                generationSpacing;
 
             let cursor =
                 anchor -
                 totalWidth / 2;
 
-            for (const group of clusterGroups) {
+            for (
+                const group of
+                clusterGroups
+            ) {
                 const width =
-                    getGroupWidth(group);
+                    getGroupWidth(
+                        group
+                    );
 
                 desiredCenters.set(
                     group.id,
@@ -2454,7 +2799,7 @@ function layoutComponent(
 
                 cursor +=
                     width +
-                    xGap;
+                    generationSpacing;
             }
         }
 
@@ -2464,186 +2809,218 @@ function layoutComponent(
          * -----------------------------------------------------
          */
 
-        for (const group of generationGroups) {
+        for (
+            const group of
+            generationGroups
+        ) {
             setGroupCenter(
                 group,
                 desiredCenters.get(
                     group.id
-                ) ??
-                componentOffsetX
+                ) ?? 0
             );
         }
 
         /*
          * -----------------------------------------------------
-         * Symmetric collision solver
-         *
-         * Unchanged.
+         * Collision solver
          * -----------------------------------------------------
          */
 
-        const collisionPasses = 12;
-
-        for (
-            let pass = 0;
-            pass <
-            collisionPasses;
-            pass++
+        function resolveCollisions(
+            passes: number
         ) {
-            const ordered =
-                [...generationGroups].sort(
-                    (a, b) => {
-                        const aCenter =
-                            groupCenter.get(
-                                a.id
-                            ) ??
-                            componentOffsetX;
-
-                        const bCenter =
-                            groupCenter.get(
-                                b.id
-                            ) ??
-                            componentOffsetX;
-
-                        return (
-                            aCenter -
-                            bCenter
-                        );
-                    }
-                );
-
-            let hadCollision =
-                false;
-
             for (
-                let index = 0;
-                index <
-                ordered.length - 1;
-                index++
+                let pass = 0;
+                pass < passes;
+                pass++
             ) {
-                const leftGroup =
-                    ordered[index];
+                const ordered =
+                    [
+                        ...generationGroups,
+                    ].sort(
+                        (a, b) => {
+                            const aCenter =
+                                groupCenter.get(
+                                    a.id
+                                ) ?? 0;
 
-                const rightGroup =
-                    ordered[
-                    index + 1
-                    ];
+                            const bCenter =
+                                groupCenter.get(
+                                    b.id
+                                ) ?? 0;
 
-                const leftWidth =
-                    getGroupWidth(
-                        leftGroup
+                            if (
+                                aCenter !==
+                                bCenter
+                            ) {
+                                return (
+                                    aCenter -
+                                    bCenter
+                                );
+                            }
+
+                            const aRank =
+                                getGroupBranchRank(
+                                    a
+                                );
+
+                            const bRank =
+                                getGroupBranchRank(
+                                    b
+                                );
+
+                            if (
+                                aRank !==
+                                bRank
+                            ) {
+                                return (
+                                    aRank -
+                                    bRank
+                                );
+                            }
+
+                            return (
+                                a.id -
+                                b.id
+                            );
+                        }
                     );
 
-                const rightWidth =
-                    getGroupWidth(
-                        rightGroup
+                let changed =
+                    false;
+
+                for (
+                    let index = 0;
+                    index <
+                    ordered.length - 1;
+                    index++
+                ) {
+                    const leftGroup =
+                        ordered[index];
+
+                    const rightGroup =
+                        ordered[
+                            index + 1
+                        ];
+
+                    const leftCenter =
+                        groupCenter.get(
+                            leftGroup.id
+                        ) ?? 0;
+
+                    const rightCenter =
+                        groupCenter.get(
+                            rightGroup.id
+                        ) ?? 0;
+
+                    const leftWidth =
+                        getGroupWidth(
+                            leftGroup
+                        );
+
+                    const rightWidth =
+                        getGroupWidth(
+                            rightGroup
+                        );
+
+                    const requiredDistance =
+                        (
+                            leftWidth +
+                            rightWidth
+                        ) /
+                        2 +
+                        generationSpacing;
+
+                    const actualDistance =
+                        rightCenter -
+                        leftCenter;
+
+                    const overlap =
+                        requiredDistance -
+                        actualDistance;
+
+                    if (
+                        overlap <=
+                        0
+                    ) {
+                        continue;
+                    }
+
+                    changed =
+                        true;
+
+                    let leftMovement =
+                        overlap / 2;
+
+                    let rightMovement =
+                        overlap / 2;
+
+                    if (
+                        leftGroup.isPartnershipGroup &&
+                        !rightGroup.isPartnershipGroup
+                    ) {
+                        leftMovement =
+                            overlap *
+                            0.35;
+
+                        rightMovement =
+                            overlap *
+                            0.65;
+                    } else if (
+                        !leftGroup.isPartnershipGroup &&
+                        rightGroup.isPartnershipGroup
+                    ) {
+                        leftMovement =
+                            overlap *
+                            0.65;
+
+                        rightMovement =
+                            overlap *
+                            0.35;
+                    }
+
+                    setGroupCenter(
+                        leftGroup,
+                        leftCenter -
+                        leftMovement
                     );
 
-                const leftCenter =
-                    groupCenter.get(
-                        leftGroup.id
-                    ) ??
-                    componentOffsetX;
-
-                const rightCenter =
-                    groupCenter.get(
-                        rightGroup.id
-                    ) ??
-                    componentOffsetX;
-
-                const requiredDistance =
-                    (
-                        leftWidth +
-                        rightWidth
-                    ) /
-                    2 +
-                    xGap;
-
-                const actualDistance =
-                    rightCenter -
-                    leftCenter;
-
-                const overlap =
-                    requiredDistance -
-                    actualDistance;
-
-                if (
-                    overlap <=
-                    0
-                ) {
-                    continue;
+                    setGroupCenter(
+                        rightGroup,
+                        rightCenter +
+                        rightMovement
+                    );
                 }
 
-                hadCollision =
-                    true;
-
-                let leftMovement =
-                    overlap / 2;
-
-                let rightMovement =
-                    overlap / 2;
-
-                if (
-                    leftGroup.isPartnershipGroup &&
-                    !rightGroup.isPartnershipGroup
-                ) {
-                    leftMovement =
-                        overlap * 0.2;
-
-                    rightMovement =
-                        overlap * 0.8;
-                } else if (
-                    !leftGroup.isPartnershipGroup &&
-                    rightGroup.isPartnershipGroup
-                ) {
-                    leftMovement =
-                        overlap * 0.8;
-
-                    rightMovement =
-                        overlap * 0.2;
+                if (!changed) {
+                    break;
                 }
-
-                setGroupCenter(
-                    leftGroup,
-                    leftCenter -
-                    leftMovement
-                );
-
-                setGroupCenter(
-                    rightGroup,
-                    rightCenter +
-                    rightMovement
-                );
-            }
-
-            if (!hadCollision) {
-                break;
             }
         }
 
         /*
+         * First broad collision pass.
+         */
+        resolveCollisions(30);
+
+        /*
          * -----------------------------------------------------
-         * Pull groups back toward relationship anchors
-         *
-         * Unchanged.
+         * Gentle anchor correction
          * -----------------------------------------------------
          */
 
         const anchorCorrection =
-            0.25;
+            0.15;
 
-        for (const group of generationGroups) {
+        for (
+            const group of
+            generationGroups
+        ) {
             const currentCenter =
                 groupCenter.get(
                     group.id
                 );
-
-            if (
-                currentCenter ===
-                undefined
-            ) {
-                continue;
-            }
 
             const desiredCenter =
                 desiredCenters.get(
@@ -2651,6 +3028,8 @@ function layoutComponent(
                 );
 
             if (
+                currentCenter ===
+                undefined ||
                 desiredCenter ===
                 undefined
             ) {
@@ -2672,156 +3051,28 @@ function layoutComponent(
         }
 
         /*
-         * -----------------------------------------------------
-         * Final symmetric collision pass
-         *
-         * Unchanged.
-         * -----------------------------------------------------
+         * Final collision pass.
          */
-
-        for (
-            let pass = 0;
-            pass < 20;
-            pass++
-        ) {
-            const ordered =
-                [...generationGroups].sort(
-                    (a, b) => {
-                        const aCenter =
-                            groupCenter.get(
-                                a.id
-                            ) ??
-                            componentOffsetX;
-
-                        const bCenter =
-                            groupCenter.get(
-                                b.id
-                            ) ??
-                            componentOffsetX;
-
-                        return (
-                            aCenter -
-                            bCenter
-                        );
-                    }
-                );
-
-            let hadCollision =
-                false;
-
-            for (
-                let index = 0;
-                index <
-                ordered.length - 1;
-                index++
-            ) {
-                const leftGroup =
-                    ordered[index];
-
-                const rightGroup =
-                    ordered[
-                    index + 1
-                    ];
-
-                const leftWidth =
-                    getGroupWidth(
-                        leftGroup
-                    );
-
-                const rightWidth =
-                    getGroupWidth(
-                        rightGroup
-                    );
-
-                const leftCenter =
-                    groupCenter.get(
-                        leftGroup.id
-                    ) ??
-                    componentOffsetX;
-
-                const rightCenter =
-                    groupCenter.get(
-                        rightGroup.id
-                    ) ??
-                    componentOffsetX;
-
-                const requiredDistance =
-                    (
-                        leftWidth +
-                        rightWidth
-                    ) /
-                    2 +
-                    xGap;
-
-                const overlap =
-                    requiredDistance -
-                    (
-                        rightCenter -
-                        leftCenter
-                    );
-
-                if (
-                    overlap <=
-                    0
-                ) {
-                    continue;
-                }
-
-                hadCollision =
-                    true;
-
-                let leftMovement =
-                    overlap / 2;
-
-                let rightMovement =
-                    overlap / 2;
-
-                if (
-                    leftGroup.isPartnershipGroup &&
-                    !rightGroup.isPartnershipGroup
-                ) {
-                    leftMovement =
-                        overlap * 0.2;
-
-                    rightMovement =
-                        overlap * 0.8;
-                } else if (
-                    !leftGroup.isPartnershipGroup &&
-                    rightGroup.isPartnershipGroup
-                ) {
-                    leftMovement =
-                        overlap * 0.8;
-
-                    rightMovement =
-                        overlap * 0.2;
-                }
-
-                setGroupCenter(
-                    leftGroup,
-                    leftCenter -
-                    leftMovement
-                );
-
-                setGroupCenter(
-                    rightGroup,
-                    rightCenter +
-                    rightMovement
-                );
-            }
-
-            if (!hadCollision) {
-                break;
-            }
-        }
+        resolveCollisions(50);
     }
 
     /*
      * ---------------------------------------------------------
      * Convert groups to positioned nodes
      * ---------------------------------------------------------
+     *
+     * Everything above is calculated in local component space.
+     *
+     * componentOffsetX then moves the COMPLETE component into
+     * its position in the overall family tree.
+     *
+     * This is especially important for disconnected singles,
+     * childless couples, and small independent families.
+     * ---------------------------------------------------------
      */
 
-    const result: PositionedNode[] = [];
+    const result: PositionedNode[] =
+        [];
 
     for (const id of component) {
         const colonist =
@@ -2832,78 +3083,25 @@ function layoutComponent(
         }
 
         const generation =
-            generationMap.get(id) ?? 0;
+            generationMap.get(id) ??
+            0;
 
         result.push({
             colonist,
 
             x:
-                positions.get(id) ??
+                (
+                    positions.get(id) ??
+                    0
+                ) +
                 componentOffsetX,
 
-            /*
-             * IMPORTANT:
-             *
-             * Verticality remains purely generation based.
-             */
             y:
                 generation *
                 yGap,
 
             generation,
         });
-    }
-
-    /*
-     * ---------------------------------------------------------
-     * DEBUG: final component positions
-     * ---------------------------------------------------------
-     */
-
-    if (
-        DEBUG_LAYOUT &&
-        hasRelevantDebugColonists
-    ) {
-        const relevantNodes =
-            result.filter((node) =>
-                isDebugRelevantColonist(
-                    node.colonist.id,
-                    parentsMap,
-                    childrenMap,
-                    partnershipMap
-                )
-            );
-
-        console.groupCollapsed(
-            `[FamilyTree] Final positions — component offset ${componentOffsetX}`
-        );
-
-        console.table(
-            relevantNodes.map(
-                (node) => ({
-                    name:
-                        getDebugName(
-                            node.colonist.id,
-                            colonistMap
-                        ),
-
-                    generation:
-                        node.generation,
-
-                    x:
-                        Math.round(
-                            node.x
-                        ),
-
-                    y:
-                        Math.round(
-                            node.y
-                        ),
-                })
-            )
-        );
-
-        console.groupEnd();
     }
 
     return result;
@@ -3333,6 +3531,8 @@ export default function FamilyTree({
     const [zoom, setZoom] =
         useState(1);
 
+    const [highlightedNodeId, setHighlightedNodeId] =
+        useState<number | null>(null);
     const targetPos =
         useRef({
             x: 0,
@@ -3378,6 +3578,7 @@ export default function FamilyTree({
                             node.colonist.id,
                             node,
                         ]
+
                     )
                 ),
             [layoutNodes]
@@ -3704,100 +3905,6 @@ export default function FamilyTree({
             `/colonists/${colonistId}`;
     }
 
-    /*
-     * ---------------------------------------------------------
-     * Relationship lines
-     * ---------------------------------------------------------
-     */
-
-    const parentLines =
-        parentChildren.flatMap(
-            (relationship) => {
-                const parent =
-                    nodeMap.get(
-                        relationship.parentId
-                    );
-
-                const child =
-                    nodeMap.get(
-                        relationship.childId
-                    );
-
-                if (
-                    !parent ||
-                    !child
-                ) {
-                    return [];
-                }
-
-                return [
-                    {
-                        id:
-                            `${relationship.parentId}-${relationship.childId}`,
-
-                        x1:
-                            parent.x,
-
-                        y1:
-                            parent.y +
-                            nodeHeight /
-                            2,
-
-                        x2:
-                            child.x,
-
-                        y2:
-                            child.y -
-                            nodeHeight /
-                            2,
-                    },
-                ];
-            }
-        );
-
-    const partnershipLines =
-        partnerships.flatMap(
-            (relationship) => {
-                const a =
-                    nodeMap.get(
-                        relationship.partnerAId
-                    );
-
-                const b =
-                    nodeMap.get(
-                        relationship.partnerBId
-                    );
-
-                if (
-                    !a ||
-                    !b ||
-                    a.generation !==
-                    b.generation
-                ) {
-                    return [];
-                }
-
-                return [
-                    {
-                        id:
-                            `${relationship.partnerAId}-${relationship.partnerBId}`,
-
-                        x1:
-                            a.x,
-
-                        y1:
-                            a.y,
-
-                        x2:
-                            b.x,
-
-                        y2:
-                            b.y,
-                    },
-                ];
-            }
-        );
-
     return (
         <div
             className="relative h-screen overflow-hidden bg-zinc-900"
@@ -3834,25 +3941,17 @@ export default function FamilyTree({
             onWheel={onWheel}
         >
             {/* Search */}
-            {/* <div
-                className="absolute left-1/2 top-4 z-20 -translate-x-1/2"
-                onMouseDown={(e) =>
-                    e.stopPropagation()
-                }
-            >
-                <input
-                    type="text"
-                    placeholder="Search Family Member"
-                    className="w-96 rounded-xl border border-zinc-700 bg-zinc-800 p-3 text-white outline-none focus:border-orange-500"
-                    style={{
-                        userSelect:
-                            "text",
+            <FamilyTreeSearch
+                colonists={colonists}
+                onSelect={(colonistId) => {
+                    const node = nodeMap.get(colonistId);
 
-                        WebkitUserSelect:
-                            "text",
-                    }}
-                />
-            </div> */}
+                    if (node) {
+                        setHighlightedNodeId(colonistId);
+                        focusNode(node);
+                    }
+                }}
+            />
 
             {/* Camera */}
             <div
@@ -3866,67 +3965,12 @@ export default function FamilyTree({
                 }}
             >
                 {/* Relationship lines */}
-                <svg
-                    className="pointer-events-none absolute left-0 top-0 overflow-visible"
-                    style={{
-                        width: 1,
-                        height: 1,
-                    }}
-                >
-                    {parentLines.map(
-                        (line) => (
-                            <line
-                                key={
-                                    line.id
-                                }
-                                x1={
-                                    line.x1
-                                }
-                                y1={
-                                    line.y1
-                                }
-                                x2={
-                                    line.x2
-                                }
-                                y2={
-                                    line.y2
-                                }
-                                stroke="currentColor"
-                                className="text-zinc-600"
-                                strokeWidth={
-                                    3
-                                }
-                            />
-                        )
-                    )}
-
-                    {partnershipLines.map(
-                        (line) => (
-                            <line
-                                key={
-                                    line.id
-                                }
-                                x1={
-                                    line.x1
-                                }
-                                y1={
-                                    line.y1
-                                }
-                                x2={
-                                    line.x2
-                                }
-                                y2={
-                                    line.y2
-                                }
-                                stroke="currentColor"
-                                className="text-orange-500"
-                                strokeWidth={
-                                    3
-                                }
-                            />
-                        )
-                    )}
-                </svg>
+                <FamilyTreeConnections
+                    parentChildren={parentChildren}
+                    partnerships={partnerships}
+                    nodeMap={nodeMap}
+                    nodeHeight={nodeHeight}
+                />
 
                 {/* Nodes */}
                 {layoutNodes.map(
@@ -3938,6 +3982,9 @@ export default function FamilyTree({
                             getColonistName(
                                 colonist
                             );
+                        const legacyColor = colonist.legacy?.color ?? "#3f3f46";
+                        const isHighlighted =
+                            highlightedNodeId === colonist.id;
 
                         return (
                             <div
@@ -3965,33 +4012,33 @@ export default function FamilyTree({
                             >
                                 <a
                                     href={`/colonists/${colonist.id}`}
-                                    onClick={(
-                                        e
-                                    ) =>
-                                        onNodeClick(
-                                            e,
-                                            node
-                                        )
-                                    }
-                                    onDoubleClick={(
-                                        e
-                                    ) =>
-                                        onNodeDoubleClick(
-                                            e,
-                                            colonist.id
-                                        )}
-                                    className="block h-full w-full rounded-xl border border-zinc-700 bg-zinc-800 p-4 shadow-xl transition-all hover:scale-105 hover:border-orange-500 hover:shadow-orange-500/20"
+                                    onClick={(event) => {
+                                        if (hasDragged.current) {
+                                            event.preventDefault();
+                                            return;
+                                        }
+
+                                        event.preventDefault();
+                                        setHighlightedNodeId(colonist.id);
+                                        focusNode(node);
+                                    }}
+                                    onDoubleClick={(event) => {
+                                        event.preventDefault();
+                                        window.location.href = `/colonists/${colonist.id}`;
+                                    }}
+                                    className="block h-full w-full rounded-xl border bg-zinc-800 p-4 shadow-xl transition-all duration-200 hover:scale-105 hover:border-[var(--legacy-color)] hover:shadow-[var(--legacy-shadow)]"
                                     style={
-                                        colonist
-                                            .legacy
-                                            ?.color
-                                            ? {
-                                                borderColor:
-                                                    colonist
-                                                        .legacy
-                                                        .color,
-                                            }
-                                            : undefined
+                                        {
+                                            borderColor: legacyColor,
+                                            "--legacy-color": legacyColor,
+                                            "--legacy-shadow": `0 0 20px ${legacyColor}55`,
+                                            transform: isHighlighted
+                                                ? "scale(1.05)"
+                                                : undefined,
+                                            boxShadow: isHighlighted
+                                                ? `0 0 20px ${legacyColor}55`
+                                                : undefined,
+                                        } as React.CSSProperties
                                     }
                                 >
                                     <div className="flex h-full items-center gap-3">

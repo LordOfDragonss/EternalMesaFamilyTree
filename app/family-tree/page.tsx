@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import FamilyTree from "@/app/components/FamilyTree";
+import FamilyTree from "@/app/components/FamilyTree/FamilyTree";
 
 export default async function FamilyTreePage() {
     const colonists = await prisma.colonist.findMany({
@@ -15,6 +15,7 @@ export default async function FamilyTreePage() {
         select: {
             parentId: true,
             childId: true,
+            type: true,
         },
     });
 
@@ -22,6 +23,7 @@ export default async function FamilyTreePage() {
         select: {
             partnerAId: true,
             partnerBId: true,
+            type: true,
         },
     });
 

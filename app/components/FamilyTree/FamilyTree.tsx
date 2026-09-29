@@ -6,10 +6,10 @@ import React, {
     useRef,
     useState,
 } from "react";
-import Image from "next/image";
 import FamilyTreeSearch from "./FamilyTreeSearch";
 import FamilyTreeConnections from "./FamilyTreeConnections";
 import FamilyTreeNode from "./FamilyTreeNode";
+import FamilyTreeNavigation from "./FamilyTreeNavigation";
 
 type FamilyTreeColonist = {
     id: number;
@@ -19,6 +19,7 @@ type FamilyTreeColonist = {
     isDead: boolean;
     imageURL: string | null;
     legacy: {
+        name: string;
         color: string | null;
     } | null;
 };
@@ -2042,6 +2043,282 @@ function buildSiblingClusters(
     return clusters;
 }
 
+function getFamilyFocusIds(
+    focusedColonistId: number,
+    colonists: FamilyTreeColonist[],
+    parentChildren: FamilyTreeParentChild[],
+    partnerships: FamilyTreePartnership[]
+) {
+    const colonistIds =
+        new Set(
+            colonists.map(
+                (colonist) =>
+                    colonist.id
+            )
+        );
+
+    const parentsMap =
+        new Map<number, number[]>();
+
+    const childrenMap =
+        new Map<number, number[]>();
+
+    for (const relationship of parentChildren) {
+        if (
+            !colonistIds.has(
+                relationship.parentId
+            ) ||
+            !colonistIds.has(
+                relationship.childId
+            )
+        ) {
+            continue;
+        }
+
+        if (
+            !parentsMap.has(
+                relationship.childId
+            )
+        ) {
+            parentsMap.set(
+                relationship.childId,
+                []
+            );
+        }
+
+        parentsMap
+            .get(
+                relationship.childId
+            )!
+            .push(
+                relationship.parentId
+            );
+
+        if (
+            !childrenMap.has(
+                relationship.parentId
+            )
+        ) {
+            childrenMap.set(
+                relationship.parentId,
+                []
+            );
+        }
+
+        childrenMap
+            .get(
+                relationship.parentId
+            )!
+            .push(
+                relationship.childId
+            );
+    }
+
+    const familyIds =
+        new Set<number>([
+            focusedColonistId,
+        ]);
+
+    const focusedParents =
+        parentsMap.get(
+            focusedColonistId
+        ) ?? [];
+
+    for (const parentId of focusedParents) {
+        const siblings =
+            childrenMap.get(
+                parentId
+            ) ?? [];
+
+        for (const siblingId of siblings) {
+            if (
+                colonistIds.has(
+                    siblingId
+                )
+            ) {
+                familyIds.add(
+                    siblingId
+                );
+            }
+        }
+    }
+
+    let currentGeneration = [
+        focusedColonistId,
+    ];
+
+    while (
+        currentGeneration.length > 0
+    ) {
+        const nextGeneration: number[] = [];
+
+        for (const colonistId of currentGeneration) {
+            const parents =
+                parentsMap.get(
+                    colonistId
+                ) ?? [];
+
+            for (const parentId of parents) {
+                if (
+                    !colonistIds.has(
+                        parentId
+                    ) ||
+                    familyIds.has(
+                        parentId
+                    )
+                ) {
+                    continue;
+                }
+
+                familyIds.add(
+                    parentId
+                );
+
+                nextGeneration.push(
+                    parentId
+                );
+            }
+        }
+
+        currentGeneration =
+            nextGeneration;
+    }
+
+    currentGeneration = [
+        focusedColonistId,
+    ];
+
+    while (
+        currentGeneration.length > 0
+    ) {
+        const nextGeneration: number[] = [];
+
+        for (const colonistId of currentGeneration) {
+            const children =
+                childrenMap.get(
+                    colonistId
+                ) ?? [];
+
+            for (const childId of children) {
+                if (
+                    !colonistIds.has(
+                        childId
+                    ) ||
+                    familyIds.has(
+                        childId
+                    )
+                ) {
+                    continue;
+                }
+
+                familyIds.add(
+                    childId
+                );
+
+                nextGeneration.push(
+                    childId
+                );
+            }
+        }
+
+        currentGeneration =
+            nextGeneration;
+    }
+
+    for (const relationship of partnerships) {
+        if (
+            familyIds.has(
+                relationship.partnerAId
+            ) &&
+            colonistIds.has(
+                relationship.partnerBId
+            )
+        ) {
+            familyIds.add(
+                relationship.partnerBId
+            );
+        }
+
+        if (
+            familyIds.has(
+                relationship.partnerBId
+            ) &&
+            colonistIds.has(
+                relationship.partnerAId
+            )
+        ) {
+            familyIds.add(
+                relationship.partnerAId
+            );
+        }
+    }
+
+    return familyIds;
+}
+function getLegacyFocusIds(
+    focusedColonistId: number,
+    colonists: FamilyTreeColonist[],
+    partnerships: FamilyTreePartnership[]
+) {
+    const focusedColonist =
+        colonists.find(
+            (colonist) =>
+                colonist.id === focusedColonistId
+        );
+
+    if (
+        !focusedColonist?.legacy
+    ) {
+        return new Set<number>([
+            focusedColonistId,
+        ]);
+    }
+
+    const legacyName =
+        focusedColonist.legacy.name;
+
+    const legacyIds =
+        new Set<number>();
+
+    for (const colonist of colonists) {
+        if (
+            colonist.legacy?.name ===
+            legacyName
+        ) {
+            legacyIds.add(
+                colonist.id
+            );
+        }
+    }
+
+    const result =
+        new Set(legacyIds);
+
+    for (const relationship of partnerships) {
+        if (
+            legacyIds.has(
+                relationship.partnerAId
+            )
+        ) {
+            result.add(
+                relationship.partnerBId
+            );
+        }
+
+        if (
+            legacyIds.has(
+                relationship.partnerBId
+            )
+        ) {
+            result.add(
+                relationship.partnerAId
+            );
+        }
+    }
+
+    return result;
+}
+
 /*
  * ---------------------------------------------------------
  * Layout a single connected component
@@ -3534,11 +3811,22 @@ export default function FamilyTree({
 
     const [highlightedNodeId, setHighlightedNodeId] =
         useState<number | null>(null);
+    const [focusedColonistId, setFocusedColonistId] =
+        useState<number | null>(null);
+
+
+    const [familyFocus, setFamilyFocus] =
+        useState(false);
+
+    const [legacyFocus, setLegacyFocus] =
+        useState(false);
     const targetPos =
         useRef({
             x: 0,
             y: 0,
         });
+
+
 
     const targetZoom =
         useRef(1);
@@ -3555,18 +3843,85 @@ export default function FamilyTree({
             y: 0,
         });
 
+    const visibleTreeData =
+        useMemo(() => {
+            if (
+                !familyFocus ||
+                focusedColonistId === null
+            ) {
+                return {
+                    colonists,
+                    parentChildren,
+                    partnerships,
+                };
+            }
+
+            const familyIds =
+                getFamilyFocusIds(
+                    focusedColonistId,
+                    colonists,
+                    parentChildren,
+                    partnerships
+                );
+
+            const visibleColonists =
+                colonists.filter(
+                    (colonist) =>
+                        familyIds.has(
+                            colonist.id
+                        )
+                );
+
+            const visibleParentChildren =
+                parentChildren.filter(
+                    (relationship) =>
+                        familyIds.has(
+                            relationship.parentId
+                        ) &&
+                        familyIds.has(
+                            relationship.childId
+                        )
+                );
+
+            const visiblePartnerships =
+                partnerships.filter(
+                    (relationship) =>
+                        familyIds.has(
+                            relationship.partnerAId
+                        ) &&
+                        familyIds.has(
+                            relationship.partnerBId
+                        )
+                );
+
+            return {
+                colonists:
+                    visibleColonists,
+
+                parentChildren:
+                    visibleParentChildren,
+
+                partnerships:
+                    visiblePartnerships,
+            };
+        }, [
+            familyFocus,
+            focusedColonistId,
+            colonists,
+            parentChildren,
+            partnerships,
+        ]);
+
     const layoutNodes =
         useMemo(
             () =>
                 layoutTree(
-                    colonists,
-                    parentChildren,
-                    partnerships
+                    visibleTreeData.colonists,
+                    visibleTreeData.parentChildren,
+                    visibleTreeData.partnerships
                 ),
             [
-                colonists,
-                parentChildren,
-                partnerships,
+                visibleTreeData,
             ]
         );
 
@@ -3653,26 +4008,54 @@ export default function FamilyTree({
      * ---------------------------------------------------------
      */
 
+    const initialCameraPositioned = useRef(false);
+
     useEffect(() => {
-        if (layoutNodes.length === 0) {
+        if (
+            initialCameraPositioned.current ||
+            layoutNodes.length === 0
+        ) {
             return;
         }
 
-        const firstNode =
-            layoutNodes[0];
+        const firstNode = layoutNodes[0];
 
         targetPos.current = {
-            x:
-                window.innerWidth / 2 -
-                firstNode.x,
-
-            y:
-                window.innerHeight / 2 -
-                firstNode.y,
+            x: window.innerWidth / 2 - firstNode.x,
+            y: window.innerHeight / 2 - firstNode.y,
         };
 
         targetZoom.current = 1;
+
+        initialCameraPositioned.current = true;
     }, [layoutNodes]);
+
+    useEffect(() => {
+        if (
+            !familyFocus ||
+            focusedColonistId === null
+        ) {
+            return;
+        }
+
+        const node =
+            layoutNodes.find(
+                (node) =>
+                    node.colonist.id === focusedColonistId
+            );
+
+        if (!node) {
+            return;
+        }
+
+        window.requestAnimationFrame(() => {
+            focusNode(node);
+        });
+    }, [
+        familyFocus,
+        focusedColonistId,
+        layoutNodes,
+    ]);
 
     /*
      * ---------------------------------------------------------
@@ -3905,6 +4288,46 @@ export default function FamilyTree({
         window.location.href =
             `/colonists/${colonistId}`;
     }
+    function focusFamily() {
+        if (focusedColonistId === null) {
+            return;
+        }
+
+        setLegacyFocus(false);
+        setFamilyFocus(true);
+    }
+
+    function focusLegacy() {
+        if (focusedColonistId === null) {
+            return;
+        }
+
+        setFamilyFocus(false);
+        setLegacyFocus(true);
+    }
+
+    function showFullTree() {
+        setFamilyFocus(false);
+
+        if (
+            focusedColonistId === null
+        ) {
+            return;
+        }
+
+        const node =
+            nodeMap.get(
+                focusedColonistId
+            );
+
+        if (node) {
+            window.requestAnimationFrame(
+                () => {
+                    focusNode(node);
+                }
+            );
+        }
+    }
 
     return (
         <div
@@ -3945,13 +4368,49 @@ export default function FamilyTree({
             <FamilyTreeSearch
                 colonists={colonists}
                 onSelect={(colonistId) => {
-                    const node = nodeMap.get(colonistId);
+                    const node =
+                        nodeMap.get(
+                            colonistId
+                        );
 
                     if (node) {
-                        setHighlightedNodeId(colonistId);
+                        setHighlightedNodeId(
+                            colonistId
+                        );
+
+                        setFocusedColonistId(
+                            colonistId
+                        );
+
                         focusNode(node);
                     }
                 }}
+            />
+            <FamilyTreeNavigation
+                focusedColonist={
+                    focusedColonistId !== null
+                        ? colonists.find(
+                            (colonist) =>
+                                colonist.id ===
+                                focusedColonistId
+                        ) ?? null
+                        : null
+                }
+                familyFocus={
+                    familyFocus
+                }
+                legacyFocus={
+                    legacyFocus
+                }
+                onFocusFamily={
+                    focusFamily
+                }
+                onFocusLegacy={
+                    focusLegacy
+                }
+                onShowFullTree={
+                    showFullTree
+                }
             />
 
             {/* Camera */}
@@ -3997,11 +4456,15 @@ export default function FamilyTree({
                                 isHighlighted={isHighlighted}
                                 hasDragged={hasDragged}
                                 onFocus={() => focusNode(node)}
-                                onHighlight={() =>
+                                onHighlight={() => {
                                     setHighlightedNodeId(
                                         colonist.id
-                                    )
-                                }
+                                    );
+
+                                    setFocusedColonistId(
+                                        colonist.id
+                                    );
+                                }}
                             />
                         );
                     }

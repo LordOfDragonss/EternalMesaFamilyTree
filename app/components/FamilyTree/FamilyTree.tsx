@@ -3842,13 +3842,15 @@ export default function FamilyTree({
             x: 0,
             y: 0,
         });
+    const activeFocusId =
+        familyFocus || legacyFocus
+            ? focusedColonistId
+            : null;
 
     const visibleTreeData =
         useMemo(() => {
             if (
-                (!familyFocus &&
-                    !legacyFocus) ||
-                focusedColonistId === null
+                activeFocusId === null
             ) {
                 return {
                     colonists,
@@ -3860,13 +3862,13 @@ export default function FamilyTree({
             const focusIds =
                 familyFocus
                     ? getFamilyFocusIds(
-                        focusedColonistId,
+                        activeFocusId,
                         colonists,
                         parentChildren,
                         partnerships
                     )
                     : getLegacyFocusIds(
-                        focusedColonistId,
+                        activeFocusId,
                         colonists,
                         partnerships
                     );
@@ -3904,17 +3906,15 @@ export default function FamilyTree({
             return {
                 colonists:
                     visibleColonists,
-
                 parentChildren:
                     visibleParentChildren,
-
                 partnerships:
                     visiblePartnerships,
             };
         }, [
             familyFocus,
             legacyFocus,
-            focusedColonistId,
+            activeFocusId,
             colonists,
             parentChildren,
             partnerships,

@@ -3846,7 +3846,8 @@ export default function FamilyTree({
     const visibleTreeData =
         useMemo(() => {
             if (
-                !familyFocus ||
+                (!familyFocus &&
+                    !legacyFocus) ||
                 focusedColonistId === null
             ) {
                 return {
@@ -3856,18 +3857,24 @@ export default function FamilyTree({
                 };
             }
 
-            const familyIds =
-                getFamilyFocusIds(
-                    focusedColonistId,
-                    colonists,
-                    parentChildren,
-                    partnerships
-                );
+            const focusIds =
+                familyFocus
+                    ? getFamilyFocusIds(
+                        focusedColonistId,
+                        colonists,
+                        parentChildren,
+                        partnerships
+                    )
+                    : getLegacyFocusIds(
+                        focusedColonistId,
+                        colonists,
+                        partnerships
+                    );
 
             const visibleColonists =
                 colonists.filter(
                     (colonist) =>
-                        familyIds.has(
+                        focusIds.has(
                             colonist.id
                         )
                 );
@@ -3875,10 +3882,10 @@ export default function FamilyTree({
             const visibleParentChildren =
                 parentChildren.filter(
                     (relationship) =>
-                        familyIds.has(
+                        focusIds.has(
                             relationship.parentId
                         ) &&
-                        familyIds.has(
+                        focusIds.has(
                             relationship.childId
                         )
                 );
@@ -3886,10 +3893,10 @@ export default function FamilyTree({
             const visiblePartnerships =
                 partnerships.filter(
                     (relationship) =>
-                        familyIds.has(
+                        focusIds.has(
                             relationship.partnerAId
                         ) &&
-                        familyIds.has(
+                        focusIds.has(
                             relationship.partnerBId
                         )
                 );
@@ -3906,6 +3913,7 @@ export default function FamilyTree({
             };
         }, [
             familyFocus,
+            legacyFocus,
             focusedColonistId,
             colonists,
             parentChildren,
@@ -4032,7 +4040,8 @@ export default function FamilyTree({
 
     useEffect(() => {
         if (
-            !familyFocus ||
+            (!familyFocus &&
+                !legacyFocus) ||
             focusedColonistId === null
         ) {
             return;
@@ -4041,7 +4050,8 @@ export default function FamilyTree({
         const node =
             layoutNodes.find(
                 (node) =>
-                    node.colonist.id === focusedColonistId
+                    node.colonist.id ===
+                    focusedColonistId
             );
 
         if (!node) {
@@ -4053,6 +4063,7 @@ export default function FamilyTree({
         });
     }, [
         familyFocus,
+        legacyFocus,
         focusedColonistId,
         layoutNodes,
     ]);
@@ -4308,6 +4319,7 @@ export default function FamilyTree({
 
     function showFullTree() {
         setFamilyFocus(false);
+        setLegacyFocus(false);
 
         if (
             focusedColonistId === null

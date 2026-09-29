@@ -4341,6 +4341,31 @@ export default function FamilyTree({
         }
     }
 
+    function refocusColonist() {
+        if (focusedColonistId === null) {
+            return;
+        }
+
+        const node =
+            nodeMap.get(
+                focusedColonistId
+            );
+
+        if (node) {
+            setHighlightedNodeId(
+                focusedColonistId
+            );
+
+            focusNode(node);
+        }
+    }
+    function unfocusColonist() {
+        setFocusedColonistId(null);
+        setHighlightedNodeId(null);
+        setFamilyFocus(false);
+        setLegacyFocus(false);
+    }
+
     return (
         <div
             className="relative h-screen overflow-hidden bg-zinc-900"
@@ -4422,6 +4447,12 @@ export default function FamilyTree({
                 }
                 onShowFullTree={
                     showFullTree
+                }
+                onRefocus={
+                    refocusColonist
+                }
+                onUnfocus={
+                    unfocusColonist
                 }
             />
 

@@ -9,6 +9,7 @@ import React, {
 import Image from "next/image";
 import FamilyTreeSearch from "./FamilyTreeSearch";
 import FamilyTreeConnections from "./FamilyTreeConnections";
+import FamilyTreeNode from "./FamilyTreeNode";
 
 type FamilyTreeColonist = {
     id: number;
@@ -2445,7 +2446,7 @@ function layoutComponent(
     ) {
         const generation =
             generations[
-                generationIndex
+            generationIndex
             ];
 
         const generationGroups =
@@ -2522,7 +2523,7 @@ function layoutComponent(
                 ) {
                     const memberId =
                         group.memberIds[
-                            index
+                        index
                         ];
 
                     const parentAnchor =
@@ -2901,7 +2902,7 @@ function layoutComponent(
 
                     const rightGroup =
                         ordered[
-                            index + 1
+                        index + 1
                         ];
 
                     const leftCenter =
@@ -3987,112 +3988,21 @@ export default function FamilyTree({
                             highlightedNodeId === colonist.id;
 
                         return (
-                            <div
-                                key={
-                                    colonist.id
+                            <FamilyTreeNode
+                                key={colonist.id}
+                                colonist={colonist}
+                                node={node}
+                                legacyColor={legacyColor}
+                                name={name}
+                                isHighlighted={isHighlighted}
+                                hasDragged={hasDragged}
+                                onFocus={() => focusNode(node)}
+                                onHighlight={() =>
+                                    setHighlightedNodeId(
+                                        colonist.id
+                                    )
                                 }
-                                className="absolute"
-                                style={{
-                                    left:
-                                        node.x -
-                                        nodeWidth /
-                                        2,
-
-                                    top:
-                                        node.y -
-                                        nodeHeight /
-                                        2,
-
-                                    width:
-                                        nodeWidth,
-
-                                    height:
-                                        nodeHeight,
-                                }}
-                            >
-                                <a
-                                    href={`/colonists/${colonist.id}`}
-                                    onClick={(event) => {
-                                        if (hasDragged.current) {
-                                            event.preventDefault();
-                                            return;
-                                        }
-
-                                        event.preventDefault();
-                                        setHighlightedNodeId(colonist.id);
-                                        focusNode(node);
-                                    }}
-                                    onDoubleClick={(event) => {
-                                        event.preventDefault();
-                                        window.location.href = `/colonists/${colonist.id}`;
-                                    }}
-                                    className="block h-full w-full rounded-xl border bg-zinc-800 p-4 shadow-xl transition-all duration-200 hover:scale-105 hover:border-[var(--legacy-color)] hover:shadow-[var(--legacy-shadow)]"
-                                    style={
-                                        {
-                                            borderColor: legacyColor,
-                                            "--legacy-color": legacyColor,
-                                            "--legacy-shadow": `0 0 20px ${legacyColor}55`,
-                                            transform: isHighlighted
-                                                ? "scale(1.05)"
-                                                : undefined,
-                                            boxShadow: isHighlighted
-                                                ? `0 0 20px ${legacyColor}55`
-                                                : undefined,
-                                        } as React.CSSProperties
-                                    }
-                                >
-                                    <div className="flex h-full items-center gap-3">
-                                        {colonist.imageURL ? (
-                                            <Image
-                                                src={`/api/images/${colonist.imageURL}`}
-                                                alt={
-                                                    name
-                                                }
-                                                width={
-                                                    56
-                                                }
-                                                height={
-                                                    72
-                                                }
-                                                draggable={
-                                                    false
-                                                }
-                                                className="h-[72px] w-14 flex-shrink-0 rounded-lg object-cover"
-                                            />
-                                        ) : (
-                                            <div className="flex h-[72px] w-14 flex-shrink-0 items-center justify-center rounded-lg bg-zinc-600 text-xl text-zinc-400">
-                                                ?
-                                            </div>
-                                        )}
-
-                                        <div className="min-w-0">
-                                            <div
-                                                className={`truncate font-medium ${colonist.isDead
-                                                    ? "text-zinc-500"
-                                                    : "text-white"
-                                                    }`}
-                                            >
-                                                {
-                                                    colonist.firstName
-                                                }{" "}
-                                                {colonist.nickname &&
-                                                    `"${colonist.nickname}"`}
-                                            </div>
-
-                                            <div
-                                                className={`truncate text-sm ${colonist.isDead
-                                                    ? "text-zinc-600"
-                                                    : "text-zinc-400"
-                                                    }`}
-                                            >
-                                                {
-                                                    colonist.lastName
-                                                }
-                                            </div>
-                                        </div>
-                                    </div>
-                                </a>
-                            </div>
+                            />
                         );
                     }
                 )}

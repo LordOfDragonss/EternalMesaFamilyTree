@@ -121,36 +121,35 @@ export default function FamilyTreeNavigation({
 
                     <div className="flex flex-wrap items-center gap-2">
 
-                        {!familyFocus &&
-                            !legacyFocus && (
-                                <>
-                                    <button
-                                        type="button"
-                                        onClick={
-                                            onFocusFamily
-                                        }
-                                        className="flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm font-medium text-zinc-200 transition-colors hover:border-zinc-500 hover:bg-zinc-700"
-                                    >
-                                        <UsersRound
-                                            size={16}
-                                        />
-                                        Focus Family
-                                    </button>
+                        {!familyFocus && (
+                            <button
+                                type="button"
+                                onClick={
+                                    onFocusFamily
+                                }
+                                className="flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm font-medium text-zinc-200 transition-colors hover:border-zinc-500 hover:bg-zinc-700"
+                            >
+                                <UsersRound
+                                    size={16}
+                                />
+                                Focus Family
+                            </button>
+                        )}
 
-                                    <button
-                                        type="button"
-                                        onClick={
-                                            onFocusLegacy
-                                        }
-                                        className="flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm font-medium text-zinc-200 transition-colors hover:border-zinc-500 hover:bg-zinc-700"
-                                    >
-                                        <Crown
-                                            size={16}
-                                        />
-                                        Focus Legacy
-                                    </button>
-                                </>
-                            )}
+                        {!legacyFocus && (
+                            <button
+                                type="button"
+                                onClick={
+                                    onFocusLegacy
+                                }
+                                className="flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm font-medium text-zinc-200 transition-colors hover:border-zinc-500 hover:bg-zinc-700"
+                            >
+                                <Crown
+                                    size={16}
+                                />
+                                Focus Legacy
+                            </button>
+                        )}
 
                         {(familyFocus ||
                             legacyFocus) && (

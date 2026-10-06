@@ -151,6 +151,7 @@ export default async function GroupsPage() {
                             <DeleteButton
                                 action={`/api/groups/${group.id}/delete`}
                                 name={group.name}
+                                type="Group"
                             />
                         </Group>
                     </Card>

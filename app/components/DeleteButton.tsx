@@ -6,15 +6,17 @@ import { Trash2 } from "lucide-react";
 type DeleteButtonProps = {
     action: string;
     name: string;
+    type: string;
 };
 
 export default function DeleteButton({
     action,
     name,
+    type,
 }: DeleteButtonProps) {
     function handleDelete(event: React.FormEvent<HTMLFormElement>) {
         const confirmed = window.confirm(
-            `Are you sure you want to delete ${name}?`
+            `Are you sure you want to delete ${type} "${name}"?`
         );
 
         if (!confirmed) {
@@ -29,13 +31,13 @@ export default function DeleteButton({
             onSubmit={handleDelete}
             style={{ display: "inline" }}
         >
-            <Tooltip label="Delete colonist">
+            <Tooltip label={`Delete ${type.toLowerCase()}`}>
                 <ActionIcon
                     component="button"
                     type="submit"
                     variant="subtle"
                     color="red"
-                    aria-label={`Delete ${name}`}
+                    aria-label={`Delete ${type.toLowerCase()} ${name}`}
                 >
                     <Trash2 size={18} />
                 </ActionIcon>

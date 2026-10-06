@@ -36,11 +36,6 @@ const links = [
         icon: Orbit,
     },
     {
-        label: "Stories",
-        href: "/stories",
-        icon: BookOpen,
-    },
-    {
         label: "Locations",
         href: "/locations",
         icon: MapPin,
@@ -49,6 +44,11 @@ const links = [
         label: "Relics",
         href: "/relics",
         icon: Gem,
+    },
+    {
+        label: "Stories",
+        href: "/stories",
+        icon: BookOpen,
     },
 ];
 

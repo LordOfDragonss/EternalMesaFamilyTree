@@ -253,6 +253,7 @@ export default async function LegaciesPage({
                             <DeleteButton
                                 action={`/api/legacies/${legacy.id}/delete`}
                                 name={legacy.name}
+                                type="Legacy"
                             />
                         </Group>
                     </Card>

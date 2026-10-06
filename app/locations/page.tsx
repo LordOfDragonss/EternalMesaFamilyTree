@@ -174,6 +174,7 @@ export default async function LocationsPage() {
                             <DeleteButton
                                 action={`/api/locations/${location.id}/delete`}
                                 name={location.name}
+                                type="Location"
                             />
                         </Group>
                     </Card>

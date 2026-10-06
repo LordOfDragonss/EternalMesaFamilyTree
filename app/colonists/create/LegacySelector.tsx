@@ -29,6 +29,8 @@ export default function LegacySelector({
     defaultValue = null,
 }: LegacySelectorProps) {
     const [creatingLegacy, setCreatingLegacy] = useState(false);
+    const [selectedValue, setSelectedValue] =
+        useState<string | null>(defaultValue);
 
     function cancelCreateLegacy() {
         setCreatingLegacy(false);
@@ -119,9 +121,21 @@ export default function LegacySelector({
                 placeholder="No legacy"
                 data={legacyOptions}
                 defaultValue={defaultValue}
+                value={selectedValue}
+                onChange={setSelectedValue}
                 clearable
                 searchable
                 style={{ flex: 1 }}
+                styles={{
+                    input: {
+                        color:
+                            legacyOptions.find(
+                                (legacy) =>
+                                    legacy.value === selectedValue
+                            )?.color ??
+                            "var(--mantine-color-text)",
+                    },
+                }}
                 renderOption={({ option }) => {
                     if (option.value === "none") {
                         return (

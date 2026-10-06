@@ -14,6 +14,7 @@ import {
     Tooltip,
 } from "@mantine/core";
 import { ArrowLeft, Save } from "lucide-react";
+import LegacyColorColonistSelect from "@/app/components/LegacyColorColonistSelect";
 
 export default async function EditLegacyPage({
     params,
@@ -42,6 +43,13 @@ export default async function EditLegacyPage({
                 lastName: "asc",
             },
         ],
+        include: {
+            legacy: {
+                select: {
+                    color: true,
+                },
+            },
+        },
     });
 
     const colonistOptions = colonists.map((colonist) => ({
@@ -50,6 +58,7 @@ export default async function EditLegacyPage({
             ? ` "${colonist.nickname}"`
             : ""
             } ${colonist.lastName}`,
+        color: colonist.legacy?.color ?? null,
     }));
 
     return (
@@ -147,8 +156,8 @@ export default async function EditLegacyPage({
                                     description="Include this legacy in succession attention tracking."
                                     defaultChecked={legacy.trackForSuccession}
                                 />
-
-                                <Select
+                                
+                                <LegacyColorColonistSelect
                                     name="foundingColonistId"
                                     label="Founding colonist"
                                     placeholder="Select a colonist"

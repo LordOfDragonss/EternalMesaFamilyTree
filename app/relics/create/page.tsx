@@ -13,6 +13,7 @@ import {
 } from "@mantine/core";
 
 import RelicPrimaryImageUpload from "./RelicPrimaryImageUpload";
+import LegacyColorColonistSelect from "@/app/components/LegacyColorColonistSelect";
 
 const relicCategories = [
     {
@@ -50,13 +51,16 @@ export default async function CreateRelicPage() {
         await Promise.all([
             prisma.colonist.findMany({
                 orderBy: [
-                    {
-                        firstName: "asc",
-                    },
-                    {
-                        lastName: "asc",
-                    },
+                    { firstName: "asc" },
+                    { lastName: "asc" },
                 ],
+                include: {
+                    legacy: {
+                        select: {
+                            color: true,
+                        },
+                    },
+                },
             }),
 
             prisma.location.findMany({
@@ -66,15 +70,14 @@ export default async function CreateRelicPage() {
             }),
         ]);
 
-    const colonistOptions =
-        colonists.map((colonist) => ({
-            value: colonist.id.toString(),
-            label: `${colonist.firstName}${
-                colonist.nickname
-                    ? ` "${colonist.nickname}"`
-                    : ""
+    const colonistOptions = colonists.map((colonist) => ({
+        value: colonist.id.toString(),
+        label: `${colonist.firstName}${colonist.nickname
+                ? ` "${colonist.nickname}"`
+                : ""
             } ${colonist.lastName}`,
-        }));
+        color: colonist.legacy?.color ?? null,
+    }));
 
     const locationOptions =
         locations.map((location) => ({
@@ -243,11 +246,9 @@ export default async function CreateRelicPage() {
                                     </Text>
                                 </div>
 
-                                <Select
+                                <LegacyColorColonistSelect
                                     name="ownerId"
                                     label="Current owner"
-                                    description="Leave empty if the relic has no individual owner."
-                                    placeholder="Select a colonist"
                                     data={colonistOptions}
                                     searchable
                                     clearable

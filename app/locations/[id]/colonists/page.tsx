@@ -13,6 +13,7 @@ import { Plus, X } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import LocationHeader from "../LocationHeader";
 import LocationNavigation from "../LocationNavigation";
+import LegacyColorColonistSelect from "@/app/components/LegacyColorColonistSelect";
 
 export default async function LocationColonistsPage({
     params,
@@ -67,6 +68,15 @@ export default async function LocationColonistsPage({
             id: {
                 notIn: memberIds,
             },
+
+        },
+        include: {
+            legacy: {
+                select: {
+                    name: true,
+                    color: true,
+                },
+            },
         },
         orderBy: [
             {
@@ -77,15 +87,16 @@ export default async function LocationColonistsPage({
             },
         ],
     });
-
-    const colonistOptions = availableColonists.map((colonist) => ({
-        value: colonist.id.toString(),
-        label: `${colonist.firstName}${
-            colonist.nickname
+    const colonistOptions = availableColonists.map(
+        (colonist) => ({
+            value: colonist.id.toString(),
+            label: `${colonist.firstName}${colonist.nickname
                 ? ` "${colonist.nickname}"`
                 : ""
-        } ${colonist.lastName}`,
-    }));
+                } ${colonist.lastName}`,
+            color: colonist.legacy?.color ?? null,
+        })
+    );
 
     return (
         <main
@@ -192,15 +203,13 @@ export default async function LocationColonistsPage({
                                     align="flex-end"
                                     gap="xs"
                                 >
-                                    <Select
+                                    <LegacyColorColonistSelect
                                         name="colonistId"
                                         label="Add colonist"
                                         placeholder="Select a colonist"
                                         data={colonistOptions}
                                         searchable
-                                        style={{
-                                            flex: 1,
-                                        }}
+                                        style={{ flex: 1 }}
                                     />
 
                                     <Tooltip label="Add colonist">

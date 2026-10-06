@@ -41,7 +41,15 @@ export default async function LegacyPage({
 
             notableColonists: {
                 include: {
-                    colonist: true,
+                    colonist: {
+                        include: {
+                            legacy: {
+                                select: {
+                                    color: true,
+                                },
+                            },
+                        },
+                    },
                 },
             },
         },
@@ -58,6 +66,13 @@ export default async function LegacyPage({
     const availableColonists = await prisma.colonist.findMany({
         where: {
             legacyId: null,
+        },
+        include: {
+            legacy: {
+                select: {
+                    color: true,
+                },
+            },
         },
         orderBy: [
             {
@@ -84,6 +99,13 @@ export default async function LegacyPage({
                 notIn: Array.from(notableColonistIds),
             },
         },
+        include: {
+            legacy: {
+                select: {
+                    color: true,
+                },
+            },
+        },
         orderBy: [
             {
                 firstName: "asc",
@@ -100,6 +122,7 @@ export default async function LegacyPage({
             ? ` "${colonist.nickname}"`
             : ""
             } ${colonist.lastName}`,
+        color: colonist.legacy?.color ?? null,
     }));
 
     const notableColonistOptions = availableNotableColonists.map(
@@ -109,6 +132,7 @@ export default async function LegacyPage({
                 ? ` "${colonist.nickname}"`
                 : ""
                 } ${colonist.lastName}`,
+            color: colonist.legacy?.color ?? null,
         })
     );
 

@@ -14,6 +14,7 @@ import {
 } from "@mantine/core";
 
 import RelicPrimaryImageUpload from "../../create/RelicPrimaryImageUpload";
+import LegacyColorColonistSelect from "@/app/components/LegacyColorColonistSelect";
 
 const relicCategories = [
     { value: "IDEOLOGY", label: "Ideology" },
@@ -55,6 +56,13 @@ export default async function EditRelicPage({
                     { firstName: "asc" },
                     { lastName: "asc" },
                 ],
+                include: {
+                    legacy: {
+                        select: {
+                            color: true,
+                        },
+                    },
+                },
             }),
 
             prisma.location.findMany({
@@ -68,14 +76,14 @@ export default async function EditRelicPage({
         notFound();
     }
 
-    const colonistOptions =
-        colonists.map((colonist) => ({
-            value: colonist.id.toString(),
-            label: `${colonist.firstName}${colonist.nickname
-                    ? ` "${colonist.nickname}"`
-                    : ""
-                } ${colonist.lastName}`,
-        }));
+    const colonistOptions = colonists.map((colonist) => ({
+        value: colonist.id.toString(),
+        label: `${colonist.firstName}${colonist.nickname
+                ? ` "${colonist.nickname}"`
+                : ""
+            } ${colonist.lastName}`,
+        color: colonist.legacy?.color ?? null,
+    }));
 
     const locationOptions =
         locations.map((location) => ({
@@ -254,15 +262,11 @@ export default async function EditRelicPage({
                                     </Text>
                                 </div>
 
-                                <Select
+                                <LegacyColorColonistSelect
                                     name="ownerId"
                                     label="Current Owner"
-                                    placeholder="No current owner"
                                     data={colonistOptions}
-                                    defaultValue={
-                                        relic.ownerId?.toString() ??
-                                        null
-                                    }
+                                    defaultValue={relic.ownerId?.toString() ?? null}
                                     searchable
                                     clearable
                                 />

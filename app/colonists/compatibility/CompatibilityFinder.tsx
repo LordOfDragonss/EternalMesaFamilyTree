@@ -24,6 +24,7 @@ import {
     Orbit,
     Users,
 } from "lucide-react";
+import LegacyColorColonistSelect from "@/app/components/LegacyColorColonistSelect";
 
 type Ancestor = {
     id: number;
@@ -366,6 +367,7 @@ export default function CompatibilityFinder({
         .map((colonist) => ({
             value: colonist.id.toString(),
             label: getColonistName(colonist),
+            color: colonist.legacy?.color ?? null,
         }));
 
     return (
@@ -409,7 +411,7 @@ export default function CompatibilityFinder({
                         </Text>
                     </div>
 
-                    <Select
+                    <LegacyColorColonistSelect
                         label="Colonist"
                         placeholder="Choose a colonist..."
                         data={selectOptions}
@@ -418,27 +420,6 @@ export default function CompatibilityFinder({
                         searchable
                         clearable
                         nothingFoundMessage="No colonists found"
-                        renderOption={({ option }) => {
-                            const colonist =
-                                colonists.find(
-                                    (colonist) =>
-                                        colonist.id.toString() ===
-                                        option.value
-                                );
-
-                            return (
-                                <Text
-                                    style={{
-                                        color:
-                                            colonist?.legacy
-                                                ?.color ??
-                                            undefined,
-                                    }}
-                                >
-                                    {option.label}
-                                </Text>
-                            );
-                        }}
                     />
 
                     <Text size="xs" c="dimmed">

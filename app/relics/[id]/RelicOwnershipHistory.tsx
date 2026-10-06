@@ -3,7 +3,6 @@
 import {
     ActionIcon,
     Group,
-    Select,
     Text,
     Tooltip,
 } from "@mantine/core";
@@ -15,6 +14,7 @@ import {
     Trash2,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import LegacyColorColonistSelect from "@/app/components/LegacyColorColonistSelect";
 
 type Legacy = {
     color: string | null;
@@ -43,20 +43,19 @@ type Props = {
 
 type ChainItem =
     | {
-          type: "previous";
-          ownership: Ownership;
-      }
+        type: "previous";
+        ownership: Ownership;
+    }
     | {
-          type: "current";
-          colonist: Colonist | null;
-      };
+        type: "current";
+        colonist: Colonist | null;
+    };
 
 function getColonistName(colonist: Colonist) {
-    return `${colonist.firstName}${
-        colonist.nickname
+    return `${colonist.firstName}${colonist.nickname
             ? ` "${colonist.nickname}"`
             : ""
-    } ${colonist.lastName}`;
+        } ${colonist.lastName}`;
 }
 
 function getLegacyColor(colonist: Colonist) {
@@ -209,7 +208,7 @@ export default function RelicOwnershipHistory({
 
                 throw new Error(
                     data?.error ??
-                        "Failed to add owner."
+                    "Failed to add owner."
                 );
             }
 
@@ -282,7 +281,7 @@ export default function RelicOwnershipHistory({
 
                 throw new Error(
                     data?.error ??
-                        "Failed to move owner."
+                    "Failed to move owner."
                 );
             }
 
@@ -318,7 +317,7 @@ export default function RelicOwnershipHistory({
 
                 throw new Error(
                     data?.error ??
-                        "Failed to remove owner."
+                    "Failed to remove owner."
                 );
             }
 
@@ -340,15 +339,13 @@ export default function RelicOwnershipHistory({
                 gap="sm"
                 mb="md"
             >
-                <Select
+                <LegacyColorColonistSelect
                     label="Add previous owner"
                     placeholder="Select a colonist"
                     searchable
                     clearable
                     value={selectedColonistId}
-                    onChange={
-                        setSelectedColonistId
-                    }
+                    onChange={setSelectedColonistId}
                     data={availableColonists.map(
                         (colonist) => ({
                             value: String(
@@ -357,6 +354,9 @@ export default function RelicOwnershipHistory({
                             label: getColonistName(
                                 colonist
                             ),
+                            color:
+                                colonist.legacy?.color ??
+                                null,
                         })
                     )}
                     style={{
@@ -405,7 +405,7 @@ export default function RelicOwnershipHistory({
                                     "nowrap",
                                 marginBottom:
                                     rowIndex <
-                                    rows.length -
+                                        rows.length -
                                         1
                                         ? "0.5rem"
                                         : 0,
@@ -418,18 +418,18 @@ export default function RelicOwnershipHistory({
                                 ) => {
                                     const globalIndex =
                                         rowIndex *
-                                            columns +
+                                        columns +
                                         index;
 
                                     const isLastInRow =
                                         index ===
                                         row.length -
-                                            1;
+                                        1;
 
                                     const isLastItem =
                                         globalIndex ===
                                         chainItems.length -
-                                            1;
+                                        1;
 
                                     if (
                                         item.type ===
@@ -587,7 +587,7 @@ export default function RelicOwnershipHistory({
                                                             size="sm"
                                                             disabled={
                                                                 globalIndex ===
-                                                                    0 ||
+                                                                0 ||
                                                                 saving
                                                             }
                                                             onClick={() =>
@@ -613,8 +613,8 @@ export default function RelicOwnershipHistory({
                                                             size="sm"
                                                             disabled={
                                                                 globalIndex ===
-                                                                    history.length -
-                                                                        1 ||
+                                                                history.length -
+                                                                1 ||
                                                                 saving
                                                             }
                                                             onClick={() =>
@@ -677,14 +677,14 @@ export default function RelicOwnershipHistory({
 
                             {rowIndex <
                                 rows.length -
-                                    1 && (
-                                <ArrowDown
-                                    size={18}
-                                    style={{
-                                        flexShrink: 0,
-                                    }}
-                                />
-                            )}
+                                1 && (
+                                    <ArrowDown
+                                        size={18}
+                                        style={{
+                                            flexShrink: 0,
+                                        }}
+                                    />
+                                )}
                         </div>
                     )
                 )}

@@ -10,10 +10,12 @@ import {
 } from "@mantine/core";
 import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
+import LegacyColorColonistSelect from "@/app/components/LegacyColorColonistSelect";
 
 type ColonistOption = {
     value: string;
     label: string;
+    color: string | null;
 };
 
 type RelationshipType =
@@ -200,7 +202,7 @@ export default function Relationships({
                         wrap="nowrap"
                         gap="sm"
                     >
-                        <Select
+                        <LegacyColorColonistSelect
                             name="parentId[]"
                             label="Parent"
                             placeholder="Select a colonist"
@@ -273,7 +275,7 @@ export default function Relationships({
                         wrap="nowrap"
                         gap="sm"
                     >
-                        <Select
+                        <LegacyColorColonistSelect
                             name="childId[]"
                             label="Child"
                             placeholder="Select a colonist"
@@ -346,7 +348,7 @@ export default function Relationships({
                         wrap="nowrap"
                         gap="sm"
                     >
-                        <Select
+                        <LegacyColorColonistSelect
                             name="partnerId[]"
                             label="Partner"
                             placeholder="Select a colonist"

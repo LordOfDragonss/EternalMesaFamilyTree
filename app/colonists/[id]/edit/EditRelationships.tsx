@@ -10,10 +10,12 @@ import {
 } from "@mantine/core";
 import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
+import LegacyColorColonistSelect from "@/app/components/LegacyColorColonistSelect";
 
 type ColonistOption = {
     value: string;
     label: string;
+    color: string | null;
 };
 
 type ParentChildType =
@@ -30,6 +32,7 @@ type ParentRow = {
     id: string;
     colonistId: string;
     name?: string;
+    color: string | null;
     type: ParentChildType;
     existing: boolean;
     relationshipId?: number;
@@ -39,6 +42,7 @@ type ChildRow = {
     id: string;
     colonistId: string;
     name?: string;
+    color: string | null;
     type: ParentChildType;
     existing: boolean;
     relationshipId?: number;
@@ -48,6 +52,7 @@ type PartnerRow = {
     id: string;
     colonistId: string;
     name?: string;
+    color: string | null;
     type: PartnershipType;
     existing: boolean;
     relationshipId?: number;
@@ -64,6 +69,7 @@ type Props = {
         id: string;
         colonistId: string;
         name: string;
+        color: string | null;
         type: ParentChildType;
         relationshipId: number;
     }[];
@@ -72,6 +78,7 @@ type Props = {
         id: string;
         colonistId: string;
         name: string;
+        color: string | null;
         type: ParentChildType;
         relationshipId: number;
     }[];
@@ -80,6 +87,7 @@ type Props = {
         id: string;
         colonistId: string;
         name: string;
+        color: string | null;
         type: PartnershipType;
         relationshipId: number;
     }[];
@@ -129,6 +137,7 @@ export default function EditRelationships({
             id: parent.id,
             colonistId: parent.colonistId,
             name: parent.name,
+            color: parent.color,
             type: parent.type,
             existing: true,
             relationshipId: parent.relationshipId,
@@ -141,6 +150,7 @@ export default function EditRelationships({
             colonistId: child.colonistId,
             name: child.name,
             type: child.type,
+            color: child.color,
             existing: true,
             relationshipId: child.relationshipId,
         }))
@@ -152,6 +162,7 @@ export default function EditRelationships({
             colonistId: partner.colonistId,
             name: partner.name,
             type: partner.type,
+            color: partner.color,
             existing: true,
             relationshipId: partner.relationshipId,
         }))
@@ -163,6 +174,7 @@ export default function EditRelationships({
             {
                 id: crypto.randomUUID(),
                 colonistId: "",
+                color: null,
                 type: "Biological",
                 existing: false,
             },
@@ -175,9 +187,10 @@ export default function EditRelationships({
             {
                 id: crypto.randomUUID(),
                 colonistId: "",
+                color: null,
                 type: "Biological",
                 existing: false,
-            },
+            }
         ]);
     }
 
@@ -187,9 +200,10 @@ export default function EditRelationships({
             {
                 id: crypto.randomUUID(),
                 colonistId: "",
+                color: null,
                 type: "Lover",
                 existing: false,
-            },
+            }
         ]);
     }
 
@@ -307,6 +321,9 @@ export default function EditRelationships({
                                     style={{
                                         flex: 1,
                                         paddingBottom: 9,
+                                        color:
+                                            parent.color ??
+                                            "var(--mantine-color-text)",
                                     }}
                                 >
                                     {parent.name}
@@ -370,8 +387,8 @@ export default function EditRelationships({
                                     alignItems: "flex-end",
                                 }}
                             >
-                                <Select
-                                    name="parentId"
+                                <LegacyColorColonistSelect
+                                    name="parentId[]"
                                     label="Parent"
                                     placeholder="Select a colonist"
                                     data={parentOptions}
@@ -384,7 +401,6 @@ export default function EditRelationships({
                                         )
                                     }
                                     searchable
-                                    required
                                     style={{ flex: 1 }}
                                 />
 
@@ -464,6 +480,9 @@ export default function EditRelationships({
                                     style={{
                                         flex: 1,
                                         paddingBottom: 9,
+                                        color:
+                                            child.color ??
+                                            "var(--mantine-color-text)",
                                     }}
                                 >
                                     {child.name}
@@ -527,8 +546,8 @@ export default function EditRelationships({
                                     alignItems: "flex-end",
                                 }}
                             >
-                                <Select
-                                    name="childId"
+                                <LegacyColorColonistSelect
+                                    name="childId[]"
                                     label="Child"
                                     placeholder="Select a colonist"
                                     data={childOptions}
@@ -541,7 +560,6 @@ export default function EditRelationships({
                                         )
                                     }
                                     searchable
-                                    required
                                     style={{ flex: 1 }}
                                 />
 
@@ -620,6 +638,9 @@ export default function EditRelationships({
                                     style={{
                                         flex: 1,
                                         paddingBottom: 9,
+                                        color:
+                                            partner.color ??
+                                            "var(--mantine-color-text)",
                                     }}
                                 >
                                     {partner.name}
@@ -683,8 +704,8 @@ export default function EditRelationships({
                                     alignItems: "flex-end",
                                 }}
                             >
-                                <Select
-                                    name="partnerId"
+                                <LegacyColorColonistSelect
+                                    name="partnerId[]"
                                     label="Partner"
                                     placeholder="Select a colonist"
                                     data={partnerOptions}
@@ -697,7 +718,6 @@ export default function EditRelationships({
                                         )
                                     }
                                     searchable
-                                    required
                                     style={{ flex: 1 }}
                                 />
 

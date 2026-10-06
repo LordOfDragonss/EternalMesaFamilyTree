@@ -37,6 +37,14 @@ export default async function NewColonist() {
         }),
 
         prisma.colonist.findMany({
+            include: {
+                legacy: {
+                    select: {
+                        color: true,
+                    },
+                },
+            },
+
             orderBy: [
                 {
                     lastName: "asc",
@@ -87,6 +95,7 @@ export default async function NewColonist() {
             ? ` "${colonist.nickname}"`
             : ""
             } ${colonist.lastName}`,
+        color: colonist.legacy?.color ?? null,
     }));
 
     const initialSkills: CreateSkill[] =

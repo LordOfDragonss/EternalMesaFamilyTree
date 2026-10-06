@@ -5,12 +5,12 @@ import {
     Button,
     Card,
     Group,
-    Select,
     Stack,
     Text,
     Textarea,
     Tooltip,
 } from "@mantine/core";
+import LegacyColorColonistSelect from "@/app/components/LegacyColorColonistSelect";
 import {
     Check,
     Pencil,
@@ -28,12 +28,16 @@ type NotableColonist = {
         firstName: string;
         lastName: string;
         nickname: string | null;
+        legacy: {
+            color: string | null;
+        } | null;
     };
 };
 
 type ColonistOption = {
     value: string;
     label: string;
+    color: string | null;
 };
 
 type Props = {
@@ -93,10 +97,10 @@ export default function LegacyNotableColonists({
             current.map((item) =>
                 item.colonistId === colonistId
                     ? {
-                          ...item,
-                          description:
-                              description.trim() || null,
-                      }
+                        ...item,
+                        description:
+                            description.trim() || null,
+                    }
                     : item
             )
         );
@@ -127,11 +131,11 @@ export default function LegacyNotableColonists({
                 ...current,
                 {
                     value: removed.colonist.id.toString(),
-                    label: `${removed.colonist.firstName}${
-                        removed.colonist.nickname
+                    label: `${removed.colonist.firstName}${removed.colonist.nickname
                             ? ` "${removed.colonist.nickname}"`
                             : ""
-                    } ${removed.colonist.lastName}`,
+                        } ${removed.colonist.lastName}`,
+                    color: removed.colonist.legacy?.color ?? null,
                 },
             ]);
         }
@@ -147,11 +151,10 @@ export default function LegacyNotableColonists({
     return (
         <Stack gap="md">
             {items.map((item) => {
-                const name = `${item.colonist.firstName}${
-                    item.colonist.nickname
-                        ? ` "${item.colonist.nickname}"`
-                        : ""
-                } ${item.colonist.lastName}`;
+                const name = `${item.colonist.firstName}${item.colonist.nickname
+                    ? ` "${item.colonist.nickname}"`
+                    : ""
+                    } ${item.colonist.lastName}`;
 
                 const editing =
                     editingId === item.colonistId;
@@ -298,7 +301,7 @@ export default function LegacyNotableColonists({
                     method="POST"
                 >
                     <Stack gap="sm">
-                        <Select
+                        <LegacyColorColonistSelect
                             name="colonistId"
                             label="Add notable colonist"
                             placeholder="Select a colonist"

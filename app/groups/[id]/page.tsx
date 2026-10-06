@@ -3,12 +3,12 @@ import {
     ActionIcon,
     Card,
     Group,
-    Select,
     Stack,
     Text,
     Title,
     Tooltip,
 } from "@mantine/core";
+import LegacyColorColonistSelect from "@/app/components/LegacyColorColonistSelect";
 import { ArrowLeft, Pencil, Plus, X } from "lucide-react";
 
 export default async function GroupPage({
@@ -57,6 +57,13 @@ export default async function GroupPage({
                 notIn: memberIds,
             },
         },
+        include: {
+            legacy: {
+                select: {
+                    color: true,
+                },
+            },
+        },
         orderBy: [
             {
                 firstName: "asc",
@@ -67,14 +74,16 @@ export default async function GroupPage({
         ],
     });
 
-    const colonistOptions = availableColonists.map((colonist) => ({
-        value: colonist.id.toString(),
-        label: `${colonist.firstName}${
-            colonist.nickname
+    const colonistOptions = availableColonists.map(
+        (colonist) => ({
+            value: colonist.id.toString(),
+            label: `${colonist.firstName}${colonist.nickname
                 ? ` "${colonist.nickname}"`
                 : ""
-        } ${colonist.lastName}`,
-    }));
+                } ${colonist.lastName}`,
+            color: colonist.legacy?.color ?? null,
+        })
+    );
 
     /*
      * Keep members ordered alphabetically.
@@ -263,7 +272,7 @@ export default async function GroupPage({
                                     align="flex-end"
                                     gap="xs"
                                 >
-                                    <Select
+                                    <LegacyColorColonistSelect
                                         name="colonistId"
                                         label="Add member"
                                         placeholder="Select a colonist"

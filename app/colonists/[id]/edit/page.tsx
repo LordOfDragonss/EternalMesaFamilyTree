@@ -34,25 +34,57 @@ export default async function EditColonist({
 
                 parents: {
                     include: {
-                        parent: true,
+                        parent: {
+                            include: {
+                                legacy: {
+                                    select: {
+                                        color: true,
+                                    },
+                                },
+                            },
+                        },
                     },
                 },
 
                 children: {
                     include: {
-                        child: true,
+                        child: {
+                            include: {
+                                legacy: {
+                                    select: {
+                                        color: true,
+                                    },
+                                },
+                            },
+                        },
                     },
                 },
 
                 partnerARelationships: {
                     include: {
-                        partnerB: true,
+                        partnerB: {
+                            include: {
+                                legacy: {
+                                    select: {
+                                        color: true,
+                                    },
+                                },
+                            },
+                        },
                     },
                 },
 
                 partnerBRelationships: {
                     include: {
-                        partnerA: true,
+                        partnerA: {
+                            include: {
+                                legacy: {
+                                    select: {
+                                        color: true,
+                                    },
+                                },
+                            },
+                        },
                     },
                 },
 
@@ -150,6 +182,14 @@ export default async function EditColonist({
                 },
             },
 
+            include: {
+                legacy: {
+                    select: {
+                        color: true,
+                    },
+                },
+            },
+
             orderBy: [
                 {
                     firstName: "asc",
@@ -169,6 +209,13 @@ export default async function EditColonist({
                         ...existingParentIds,
                         ...existingChildIds,
                     ],
+                },
+            },
+            include: {
+                legacy: {
+                    select: {
+                        color: true,
+                    },
                 },
             },
 
@@ -195,7 +242,13 @@ export default async function EditColonist({
                     ],
                 },
             },
-
+            include: {
+                legacy: {
+                    select: {
+                        color: true,
+                    },
+                },
+            },
             orderBy: [
                 {
                     firstName: "asc",
@@ -273,6 +326,9 @@ export default async function EditColonist({
                         : ""
                     } ${relationship.parent.lastName}`,
 
+                color:
+                    relationship.parent.legacy?.color ?? null,
+
                 type:
                     relationship.type,
 
@@ -295,6 +351,9 @@ export default async function EditColonist({
                         ? ` "${relationship.child.nickname}"`
                         : ""
                     } ${relationship.child.lastName}`,
+
+                color:
+                    relationship.child.legacy?.color ?? null,
 
                 type:
                     relationship.type,
@@ -319,6 +378,9 @@ export default async function EditColonist({
                         : ""
                     } ${relationship.partnerB.lastName}`,
 
+                color:
+                    relationship.partnerB.legacy?.color ?? null,
+
                 type:
                     relationship.type,
 
@@ -340,6 +402,9 @@ export default async function EditColonist({
                         ? ` "${relationship.partnerA.nickname}"`
                         : ""
                     } ${relationship.partnerA.lastName}`,
+
+                color:
+                    relationship.partnerA.legacy?.color ?? null,
 
                 type:
                     relationship.type,
@@ -364,6 +429,9 @@ export default async function EditColonist({
                         ? ` "${colonist.nickname}"`
                         : ""
                     } ${colonist.lastName}`,
+
+                color:
+                    colonist.legacy?.color ?? null,
             })
         );
 
@@ -378,6 +446,9 @@ export default async function EditColonist({
                         ? ` "${colonist.nickname}"`
                         : ""
                     } ${colonist.lastName}`,
+
+                color:
+                    colonist.legacy?.color ?? null,
             })
         );
 
@@ -392,6 +463,9 @@ export default async function EditColonist({
                         ? ` "${colonist.nickname}"`
                         : ""
                     } ${colonist.lastName}`,
+
+                color:
+                    colonist.legacy?.color ?? null,
             })
         );
 

@@ -21,6 +21,7 @@ import {
 import { useState } from "react";
 
 import LocationImageUpload from "./LocationImageUpload";
+import LegacyColorColonistSelect from "@/app/components/LegacyColorColonistSelect";
 
 type PreviousName = {
     id: number;
@@ -613,48 +614,16 @@ export default function LocationForm({
                                     gap="xs"
                                     mt="xs"
                                 >
-                                    <Select
+                                    <LegacyColorColonistSelect
                                         label="Add colonist"
                                         placeholder="Select a colonist"
-                                        data={
-                                            availableColonists
-                                        }
-                                        value={
-                                            colonistToAdd
-                                        }
-                                        onChange={
-                                            setColonistToAdd
-                                        }
+                                        data={availableColonists}
+                                        value={colonistToAdd}
+                                        onChange={setColonistToAdd}
                                         searchable
                                         clearable
                                         style={{
                                             flex: 1,
-                                        }}
-                                        renderOption={({
-                                            option,
-                                        }) => {
-                                            const colonist =
-                                                availableColonists.find(
-                                                    (
-                                                        item
-                                                    ) =>
-                                                        item.value ===
-                                                        option.value
-                                                );
-
-                                            return (
-                                                <span
-                                                    style={{
-                                                        color:
-                                                            colonist?.color ??
-                                                            "#a0a0a0",
-                                                    }}
-                                                >
-                                                    {
-                                                        option.label
-                                                    }
-                                                </span>
-                                            );
                                         }}
                                     />
 

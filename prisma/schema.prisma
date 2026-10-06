@@ -78,6 +78,9 @@ model Colonist {
   colonistTraits ColonistTrait[]
 
   locations Location[]
+
+  ownedRelics        Relic[]         @relation("CurrentRelicOwner")
+  relicOwnerships    RelicOwnership[]
 }
 
 model Legacy {
@@ -255,6 +258,7 @@ model Location {
 
     colonists     Colonist[]
     legacies      Legacy[]
+    relics        Relic[]
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
@@ -308,4 +312,67 @@ enum LocationType {
     PLAYABLE_MAP
     OUTPOST
     OTHER
+}
+
+enum RelicCategory {
+  IDEOLOGY
+  WEAPON
+  PERSONAL
+  LEGACY
+  STORY
+  SYMBOLIC
+  OTHER
+}
+
+model Relic {
+  id          Int     @id @default(autoincrement())
+  name        String
+  description String?
+
+  categories RelicCategory[]
+
+  //Image used for the view and cards  while the others are apart of the gallery
+  primaryImageURL String?
+  origin   String?
+
+  // Some relics are owned by a specific colonist,
+  // while others are effectively colony-owned / unowned.
+  ownerId Int?
+  owner   Colonist? @relation("CurrentRelicOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  // Where the relic is currently kept / located.
+  locationId Int?
+  location   Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+
+  // Previous colonist ownership, when relevant.
+  ownershipHistory RelicOwnership[]
+
+  //Relic Gallery
+  images RelicImage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RelicOwnership {
+  id Int @id @default(autoincrement())
+
+  relicId    Int
+  colonistId Int
+
+  relic    Relic    @relation(fields: [relicId], references: [id], onDelete: Cascade)
+  colonist Colonist @relation(fields: [colonistId], references: [id], onDelete: Cascade)
+
+  order Int @default(0)
+}
+
+model RelicImage {
+  id Int @id @default(autoincrement())
+
+  imageURL String
+  caption  String?
+  order    Int      @default(0)
+
+  relicId Int
+  relic   Relic @relation(fields: [relicId], references: [id], onDelete: Cascade)
 }

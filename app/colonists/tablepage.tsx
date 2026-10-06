@@ -67,6 +67,7 @@ export default async function ColonistsPage() {
                                 <DeleteButton
                                     action={`/api/colonists/${colonist.id}/delete`}
                                     name={`${colonist.firstName} "${colonist.nickname}" ${colonist.lastName}`}
+                                    type="Colonist"
                                 />
                             </td>
 

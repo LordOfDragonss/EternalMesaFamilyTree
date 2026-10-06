@@ -172,6 +172,7 @@ export default async function LocationLandmarksPage({
                                 <DeleteButton
                                     action={`/api/locations/${location.id}/landmarks/${landmark.id}/delete`}
                                     name={landmark.name}
+                                    type="Landmark"
                                 />
                             </Group>
                         </Card>

@@ -34,7 +34,6 @@ enum Passion {
 }
 
 model Colonist {
-
   id        Int     @id @default(autoincrement())
   firstName String
   nickname  String?
@@ -52,6 +51,8 @@ model Colonist {
   deathDay   Int?
 
   imageURL String?
+
+  images ColonistImage[]
 
   // Legacy / family line
   legacyId Int?
@@ -79,8 +80,19 @@ model Colonist {
 
   locations Location[]
 
-  ownedRelics        Relic[]         @relation("CurrentRelicOwner")
-  relicOwnerships    RelicOwnership[]
+  ownedRelics     Relic[]          @relation("CurrentRelicOwner")
+  relicOwnerships RelicOwnership[]
+}
+
+model ColonistImage {
+  id Int @id @default(autoincrement())
+
+  imageURL String
+  caption  String?
+  order    Int     @default(0)
+
+  colonistId Int
+  colonist   Colonist @relation(fields: [colonistId], references: [id], onDelete: Cascade)
 }
 
 model Legacy {
@@ -247,71 +259,71 @@ model ColonistTrait {
 }
 
 model Location {
-    id          Int      @id @default(autoincrement())
-    name        String
-    type        LocationType
-    description String?
+  id          Int          @id @default(autoincrement())
+  name        String
+  type        LocationType
+  description String?
 
-    previousNames LocationPreviousName[]
-    images        LocationImage[]
-    landmarks     LocationLandmark[]
+  previousNames LocationPreviousName[]
+  images        LocationImage[]
+  landmarks     LocationLandmark[]
 
-    colonists     Colonist[]
-    legacies      Legacy[]
-    relics        Relic[]
+  colonists Colonist[]
+  legacies  Legacy[]
+  relics    Relic[]
 
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model LocationPreviousName {
-    id         Int      @id @default(autoincrement())
-    name       String
-    order      Int      @default(0)
+  id    Int    @id @default(autoincrement())
+  name  String
+  order Int    @default(0)
 
-    locationId Int
-    location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  locationId Int
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
 }
 
 model LocationImage {
-    id         Int      @id @default(autoincrement())
-    imageURL   String
-    caption    String?
-    order      Int      @default(0)
+  id       Int     @id @default(autoincrement())
+  imageURL String
+  caption  String?
+  order    Int     @default(0)
 
-    locationId Int
-    location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  locationId Int
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
 }
 
 model LocationLandmark {
-    id          Int      @id @default(autoincrement())
-    name        String
-    description String?
+  id          Int     @id @default(autoincrement())
+  name        String
+  description String?
 
-    locationId Int
-    location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  locationId Int
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
 
-    images LocationLandmarkImage[]
+  images LocationLandmarkImage[]
 
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model LocationLandmarkImage {
-    id Int @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-    imageURL String
-    caption  String?
-    order    Int @default(0)
+  imageURL String
+  caption  String?
+  order    Int     @default(0)
 
-    landmarkId Int
-    landmark   LocationLandmark @relation(fields: [landmarkId], references: [id], onDelete: Cascade)
+  landmarkId Int
+  landmark   LocationLandmark @relation(fields: [landmarkId], references: [id], onDelete: Cascade)
 }
 
 enum LocationType {
-    PLAYABLE_MAP
-    OUTPOST
-    OTHER
+  PLAYABLE_MAP
+  OUTPOST
+  OTHER
 }
 
 enum RelicCategory {
@@ -333,7 +345,7 @@ model Relic {
 
   //Image used for the view and cards  while the others are apart of the gallery
   primaryImageURL String?
-  origin   String?
+  origin          String?
 
   // Some relics are owned by a specific colonist,
   // while others are effectively colony-owned / unowned.
@@ -371,7 +383,7 @@ model RelicImage {
 
   imageURL String
   caption  String?
-  order    Int      @default(0)
+  order    Int     @default(0)
 
   relicId Int
   relic   Relic @relation(fields: [relicId], references: [id], onDelete: Cascade)

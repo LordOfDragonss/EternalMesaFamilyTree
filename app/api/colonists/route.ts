@@ -1253,6 +1253,14 @@ export async function POST(request: Request) {
                         objectKey,
                 },
             });
+            await prisma.colonistImage.create({
+                data: {
+                    colonistId: colonist.id,
+                    imageURL: objectKey,
+                    caption: "Primary portrait",
+                    order: 0,
+                },
+            });
         }
 
         /*

@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { minio } from "@/lib/minio";
 import {
-    DeleteObjectCommand,
     PutObjectCommand,
 } from "@aws-sdk/client-s3";
 import { NextResponse } from "next/server";
@@ -543,27 +542,27 @@ export async function POST(
             );
 
         /*
-         * ---------------------------------------------------------
-         * Delete old image
-         * ---------------------------------------------------------
-         */
+        * ---------------------------------------------------------
+        * Add new portrait to gallery
+        * ---------------------------------------------------------
+        */
 
-        if (
-            existingColonist.imageURL &&
-            (
-                newImageKey ||
-                removePortrait
-            )
-        ) {
-            await minio.send(
-                new DeleteObjectCommand({
-                    Bucket:
-                        process.env.MINIO_BUCKET!,
+        if (newImageKey) {
+            const imageCount =
+                await prisma.colonistImage.count({
+                    where: {
+                        colonistId,
+                    },
+                });
 
-                    Key:
-                        existingColonist.imageURL,
-                })
-            );
+            await prisma.colonistImage.create({
+                data: {
+                    colonistId,
+                    imageURL: newImageKey,
+                    caption: "Primary portrait",
+                    order: imageCount,
+                },
+            });
         }
 
         /*

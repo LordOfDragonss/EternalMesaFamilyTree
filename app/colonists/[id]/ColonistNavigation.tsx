@@ -27,10 +27,12 @@ export default function ColonistNavigation({
             searchParams.get("section") ?? "overview";
     } else if (pathname === `${basePath}/family`) {
         activeTab = "family";
-    } else if (pathname === `${basePath}/genes`) {
-        activeTab = "genes";
     } else if (pathname === `${basePath}/skills`) {
         activeTab = "skills";
+    } else if (pathname === `${basePath}/gallery`) {
+        activeTab = "gallery";
+    } else if (pathname === `${basePath}/genes`) {
+        activeTab = "genes";
     } else if (pathname === `${basePath}/stories`) {
         activeTab = "stories";
     }
@@ -40,11 +42,11 @@ export default function ColonistNavigation({
             return;
         }
 
-        // Tabs that currently have real pages.
         const implementedTabs = [
             "overview",
             "family",
             "skills",
+            "gallery",
         ];
 
         if (implementedTabs.includes(value)) {
@@ -57,7 +59,6 @@ export default function ColonistNavigation({
             return;
         }
 
-        // Everything else temporarily goes to the fallback.
         router.push(
             `${basePath}/under-construction?section=${value}`
         );
@@ -83,10 +84,13 @@ export default function ColonistNavigation({
                     Skills
                 </Tabs.Tab>
 
+                <Tabs.Tab value="gallery">
+                    Gallery
+                </Tabs.Tab>
+
                 <Tabs.Tab value="genes">
                     Genes
                 </Tabs.Tab>
-
 
                 <Tabs.Tab value="stories">
                     Stories

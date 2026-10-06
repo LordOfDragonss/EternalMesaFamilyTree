@@ -130,11 +130,63 @@ async function seedTraits() {
     console.log(`Seeded ${traits.length} traits.`);
 }
 
+async function seedColonistGallery() {
+    const colonists = await prisma.colonist.findMany({
+        where: {
+            imageURL: {
+                not: null,
+            },
+        },
+        select: {
+            id: true,
+            imageURL: true,
+        },
+    });
+
+    let seeded = 0;
+    let skipped = 0;
+
+    for (const colonist of colonists) {
+        if (!colonist.imageURL) {
+            continue;
+        }
+
+        const existingImage =
+            await prisma.colonistImage.findFirst({
+                where: {
+                    colonistId: colonist.id,
+                    imageURL: colonist.imageURL,
+                },
+            });
+
+        if (existingImage) {
+            skipped++;
+            continue;
+        }
+
+        await prisma.colonistImage.create({
+            data: {
+                colonistId: colonist.id,
+                imageURL: colonist.imageURL,
+                caption: "Primary portrait",
+                order: 0,
+            },
+        });
+
+        seeded++;
+    }
+
+    console.log(
+        `Seeded ${seeded} primary portraits into colonist galleries. Skipped ${skipped} existing images.`
+    );
+}
+
 async function main() {
     await seedSkills();
     await seedColonistSkills();
     await seedExpertises();
     await seedTraits();
+    await seedColonistGallery();
 }
 
 main()

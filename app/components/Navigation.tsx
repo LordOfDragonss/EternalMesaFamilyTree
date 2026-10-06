@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
     Users,
     Component,
+    Sparkles,
     MapPin,
     BookOpen,
     Orbit,
@@ -49,6 +50,11 @@ const links = [
         label: "Stories",
         href: "/stories",
         icon: BookOpen,
+    },
+    {
+        label: "Highlights",
+        href: "/highlights",
+        icon: Sparkles,
     },
 ];
 

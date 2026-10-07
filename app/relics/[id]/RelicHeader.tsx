@@ -17,6 +17,7 @@ type RelicHeaderProps = {
     relic: {
         id: number;
         name: string;
+        type: string | null;
         categories: string[];
     };
 };
@@ -43,6 +44,16 @@ export default function RelicHeader({
                     {relic.name}
                 </Title>
 
+                {relic.type && (
+                    <Text
+                        c="dimmed"
+                        size="lg"
+                        mt={2}
+                    >
+                        {relic.type}
+                    </Text>
+                )}
+
                 {relic.categories.length > 0 && (
                     <Group gap="xs" mt="sm">
                         {relic.categories.map(
@@ -52,9 +63,7 @@ export default function RelicHeader({
                                     variant="light"
                                     color="mesa"
                                 >
-                                    {formatCategory(
-                                        category
-                                    )}
+                                    {formatCategory(category)}
                                 </Badge>
                             )
                         )}

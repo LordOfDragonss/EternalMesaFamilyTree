@@ -53,8 +53,8 @@ type ChainItem =
 
 function getColonistName(colonist: Colonist) {
     return `${colonist.firstName}${colonist.nickname
-            ? ` "${colonist.nickname}"`
-            : ""
+        ? ` "${colonist.nickname}"`
+        : ""
         } ${colonist.lastName}`;
 }
 
@@ -159,22 +159,6 @@ export default function RelicOwnershipHistory({
         );
     }
 
-    async function getOwnershipHistory(
-        relicId: number
-    ) {
-        const response = await fetch(
-            `/api/relics/${relicId}/ownership`
-        );
-
-        if (!response.ok) {
-            throw new Error(
-                "Failed to fetch ownership history."
-            );
-        }
-
-        return response.json();
-    }
-
     async function addOwner() {
         if (!selectedColonistId) {
             return;
@@ -212,12 +196,13 @@ export default function RelicOwnershipHistory({
                 );
             }
 
-            const updatedHistory =
-                await getOwnershipHistory(
-                    relicId
-                );
+            const data =
+                await response.json();
 
-            setHistory(updatedHistory);
+            setHistory(
+                data.ownershipHistory
+            );
+
             setSelectedColonistId(null);
         } catch (error) {
             console.error(error);
@@ -285,10 +270,12 @@ export default function RelicOwnershipHistory({
                 );
             }
 
-            const updatedHistory =
+            const data =
                 await response.json();
 
-            setHistory(updatedHistory);
+            setHistory(
+                data.ownershipHistory
+            );
         } catch (error) {
             console.error(error);
         } finally {
@@ -321,10 +308,12 @@ export default function RelicOwnershipHistory({
                 );
             }
 
-            const updatedHistory =
+            const data =
                 await response.json();
 
-            setHistory(updatedHistory);
+            setHistory(
+                data.ownershipHistory
+            );
         } catch (error) {
             console.error(error);
         } finally {

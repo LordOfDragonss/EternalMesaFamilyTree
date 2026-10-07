@@ -43,6 +43,14 @@ export async function POST(request: Request) {
                 formData.get("name") ?? ""
             ).trim();
 
+        const typeValue =
+            String(
+                formData.get("type") ?? ""
+            ).trim();
+
+        const type =
+            typeValue || null;
+
         const descriptionValue =
             String(
                 formData.get("description") ?? ""
@@ -80,7 +88,10 @@ export async function POST(request: Request) {
             categoryValue
                 ? categoryValue
                     .split(",")
-                    .map((category) => category.trim())
+                    .map(
+                        (category) =>
+                            category.trim()
+                    )
                     .filter(Boolean)
                 : [];
 
@@ -286,6 +297,7 @@ export async function POST(request: Request) {
                         await tx.relic.create({
                             data: {
                                 name,
+                                type,
                                 description,
                                 categories:
                                     categories as RelicCategory[],
@@ -324,10 +336,10 @@ export async function POST(request: Request) {
             );
 
         /*
- * ---------------------------------------------------------
- * Upload primary image
- * ---------------------------------------------------------
- */
+         * ---------------------------------------------------------
+         * Upload primary image
+         * ---------------------------------------------------------
+         */
 
         if (
             primaryImage instanceof File &&
@@ -380,10 +392,10 @@ export async function POST(request: Request) {
         }
 
         /*
- * ---------------------------------------------------------
- * Upload additional images
- * ---------------------------------------------------------
- */
+         * ---------------------------------------------------------
+         * Upload additional images
+         * ---------------------------------------------------------
+         */
 
         if (
             additionalImages.length > 0

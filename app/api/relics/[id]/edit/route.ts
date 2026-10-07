@@ -69,6 +69,14 @@ export async function POST(
                 formData.get("name") ?? ""
             ).trim();
 
+        const typeValue =
+            String(
+                formData.get("type") ?? ""
+            ).trim();
+
+        const type =
+            typeValue || null;
+
         const descriptionValue =
             String(
                 formData.get("description") ??
@@ -335,6 +343,7 @@ export async function POST(
             },
             data: {
                 name,
+                type,
                 description,
                 categories:
                     categories as RelicCategory[],

@@ -156,6 +156,14 @@ export default async function RelicsPage() {
                                     >
                                         {relic.name}
                                     </Text>
+                                    <Text
+                                        size="sm"
+                                        c="dimmed"
+                                        mt={2}
+                                        lineClamp={1}
+                                    >
+                                        {relic.type}
+                                    </Text>
 
                                     {relic.categories.length > 0 && (
                                         <Group

@@ -339,6 +339,7 @@ enum RelicCategory {
 model Relic {
   id          Int     @id @default(autoincrement())
   name        String
+  type        String?
   description String?
 
   categories RelicCategory[]

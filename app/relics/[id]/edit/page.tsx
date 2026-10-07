@@ -79,8 +79,8 @@ export default async function EditRelicPage({
     const colonistOptions = colonists.map((colonist) => ({
         value: colonist.id.toString(),
         label: `${colonist.firstName}${colonist.nickname
-                ? ` "${colonist.nickname}"`
-                : ""
+            ? ` "${colonist.nickname}"`
+            : ""
             } ${colonist.lastName}`,
         color: colonist.legacy?.color ?? null,
     }));
@@ -195,6 +195,15 @@ export default async function EditRelicPage({
                                     defaultValue={
                                         relic.name
                                     }
+                                    required
+                                />
+
+                                <TextInput
+                                    name="type"
+                                    label="Type"
+                                    description="What kind of object the relic is."
+                                    placeholder="e.g. Named Great Axe"
+                                    defaultValue={relic.type ?? ""}
                                     required
                                 />
 

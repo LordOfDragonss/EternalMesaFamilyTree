@@ -388,7 +388,7 @@ export default function EditRelationships({
                                 }}
                             >
                                 <LegacyColorColonistSelect
-                                    name="parentId[]"
+                                    name="parentId"
                                     label="Parent"
                                     placeholder="Select a colonist"
                                     data={parentOptions}
@@ -547,7 +547,7 @@ export default function EditRelationships({
                                 }}
                             >
                                 <LegacyColorColonistSelect
-                                    name="childId[]"
+                                    name="childId"
                                     label="Child"
                                     placeholder="Select a colonist"
                                     data={childOptions}
@@ -705,7 +705,7 @@ export default function EditRelationships({
                                 }}
                             >
                                 <LegacyColorColonistSelect
-                                    name="partnerId[]"
+                                    name="partnerId"
                                     label="Partner"
                                     placeholder="Select a colonist"
                                     data={partnerOptions}

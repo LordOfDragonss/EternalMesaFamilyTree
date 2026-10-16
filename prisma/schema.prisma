@@ -389,3 +389,9 @@ model RelicImage {
   relicId Int
   relic   Relic @relation(fields: [relicId], references: [id], onDelete: Cascade)
 }
+
+model HighlightSnapshot {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}

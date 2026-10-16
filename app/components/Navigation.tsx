@@ -17,6 +17,11 @@ import {
 
 const links = [
     {
+        label: "Highlights",
+        href: "/highlights",
+        icon: Sparkles,
+    },
+    {
         label: "Colonists",
         href: "/colonists",
         icon: Users,
@@ -50,11 +55,6 @@ const links = [
         label: "Stories",
         href: "/stories",
         icon: BookOpen,
-    },
-    {
-        label: "Highlights",
-        href: "/highlights",
-        icon: Sparkles,
     },
 ];
 

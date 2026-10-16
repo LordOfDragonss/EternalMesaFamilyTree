@@ -1,0 +1,341 @@
+.page {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 4rem;
+    box-sizing: border-box;
+}
+
+.hero {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 280px;
+    overflow: hidden;
+    padding: clamp(1.5rem, 4vw, 3rem);
+    border: 1px solid #49301f;
+    border-radius: 18px;
+    background:
+        radial-gradient(ellipse at 85% 45%, rgb(169 87 40 / 19%), transparent 40%),
+        linear-gradient(120deg, #1b1714 0%, #151515 55%, #21170f 100%);
+}
+
+.heroContent {
+    position: relative;
+    z-index: 2;
+    max-width: 650px;
+}
+
+.heroTitle {
+    margin-top: 1.1rem;
+    font-size: clamp(2.25rem, 5vw, 3.5rem);
+    line-height: 1.08;
+    letter-spacing: -0.045em;
+}
+
+.heroDescription {
+    max-width: 570px;
+    margin-top: 1rem;
+    color: #b7b1ab;
+    font-size: 1.05rem;
+    line-height: 1.7;
+}
+
+.heroDecoration {
+    position: absolute;
+    top: 50%;
+    right: 7%;
+    width: 240px;
+    height: 240px;
+    transform: translateY(-50%);
+    opacity: 0.8;
+}
+
+.heroRing,
+.heroRingInner {
+    position: absolute;
+    inset: 0;
+    border: 1px solid rgb(196 128 76 / 35%);
+    border-radius: 50%;
+}
+
+.heroRingInner {
+    inset: 28px;
+    border-color: rgb(196 128 76 / 25%);
+}
+
+.heroMark {
+    position: absolute;
+    inset: 50%;
+    display: grid;
+    width: 90px;
+    height: 90px;
+    place-items: center;
+    transform: translate(-50%, -50%);
+    border: 1px solid rgb(196 128 76 / 55%);
+    border-radius: 50%;
+    background: rgb(169 87 40 / 10%);
+    color: #c58b5c;
+    font-family: Georgia, serif;
+    font-size: 3rem;
+}
+
+.sectionLink {
+    display: inline-flex;
+    padding: 6px 10px;
+    border: 1px solid #37312b;
+    border-radius: 999px;
+    color: #c8b7a7;
+    font-size: 0.8rem;
+    text-decoration: none;
+    transition: background 150ms ease, border-color 150ms ease;
+}
+
+.sectionLink:hover {
+    border-color: #80502f;
+    background: rgb(169 87 40 / 12%);
+    color: #f1d1b5;
+}
+
+.overviewTile {
+    min-width: 0;
+    padding: 1rem;
+    border: 1px solid #292929;
+    border-radius: 12px;
+    background: #161616;
+}
+
+.overviewValue {
+    color: #e8d2bf;
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    font-weight: 700;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+}
+
+.highlightCard,
+.activityCard {
+    height: 100%;
+    border-color: #292929;
+    background: #161616;
+    transition: border-color 150ms ease, transform 150ms ease;
+}
+
+.highlightCard:hover {
+    transform: translateY(-2px);
+    border-color: #59402f;
+}
+
+.cardLabel {
+    color: #a9a29b;
+}
+
+.cardValue {
+    overflow-wrap: anywhere;
+    color: #eee8e1;
+    font-size: 1.15rem;
+    font-weight: 700;
+    line-height: 1.45;
+}
+
+.cardDescription {
+    overflow-wrap: anywhere;
+    line-height: 1.55;
+}
+
+.featuredCard {
+    min-height: 155px;
+    border-color: #443326;
+    background:
+        linear-gradient(145deg, rgb(169 87 40 / 8%), transparent 70%),
+        #171615;
+}
+
+.featuredLead .featuredCard {
+    border-color: #80502f;
+    background:
+        linear-gradient(145deg, rgb(169 87 40 / 15%), transparent 75%),
+        #191614;
+}
+
+.legendDot {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 3px;
+}
+
+.birthDot,
+.birthBar {
+    background: #c17b46;
+}
+
+.deathDot,
+.deathBar {
+    background: #687b87;
+}
+
+.chartScroll {
+    overflow-x: auto;
+    padding-bottom: 8px;
+}
+
+.chart {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+    min-width: max-content;
+    padding: 8px 2px 0;
+}
+
+
+.chartYearButton {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 48px;
+    padding: 6px 5px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    transition:
+        background 150ms ease,
+        border-color 150ms ease;
+}
+
+.chartYearButton:hover {
+    border-color: #49392d;
+    background: rgb(169 87 40 / 8%);
+}
+
+.chartYearSelected {
+    border-color: #80502f;
+    background: rgb(169 87 40 / 13%);
+}
+
+.chartYearButton:focus-visible {
+    outline: 2px solid #c17b46;
+    outline-offset: 2px;
+}
+
+.chartYearLabel {
+    color: #a9a29b;
+}
+
+.chartYearSelected .chartYearLabel {
+    color: #e8c3a2;
+    font-weight: 700;
+}
+
+.selectedYearPanel {
+    padding: 1rem;
+    border: 1px solid #302820;
+    border-radius: 12px;
+    background: #131313;
+}
+
+.yearEventSection {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.yearColonistList {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 8px;
+}
+
+.yearColonist {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    padding: 8px;
+    border: 1px solid #292929;
+    border-radius: 9px;
+    background: #191919;
+    color: inherit;
+    text-decoration: none;
+    transition:
+        border-color 150ms ease,
+        background 150ms ease;
+}
+
+.yearColonist:hover {
+    border-color: #59402f;
+    background: #201b17;
+}
+
+.yearColonistName {
+    overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .chartYearButton,
+    .yearColonist {
+        transition: none;
+    }
+}
+
+
+.chartBars {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 4px;
+    height: 130px;
+    border-bottom: 1px solid #383838;
+}
+
+.chartBar {
+    width: 12px;
+    min-height: 0;
+    border-radius: 4px 4px 0 0;
+    opacity: 0.9;
+    transition: opacity 150ms ease;
+}
+
+.chartBar:hover {
+    opacity: 1;
+}
+
+.footer {
+    padding-top: 1rem;
+    border-top: 1px solid #292929;
+}
+
+@media (max-width: 700px) {
+    .page {
+        padding: 1.25rem 1rem 3rem;
+    }
+
+    .hero {
+        min-height: 250px;
+    }
+
+    .heroDecoration {
+        right: -100px;
+        opacity: 0.35;
+    }
+
+    .heroDescription {
+        font-size: 0.95rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .highlightCard,
+    .sectionLink,
+    .chartBar {
+        transition: none;
+    }
+
+    .highlightCard:hover {
+        transform: none;
+    }
+}

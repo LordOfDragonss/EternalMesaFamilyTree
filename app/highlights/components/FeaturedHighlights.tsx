@@ -1,8 +1,12 @@
 
-import { SimpleGrid, Stack, Text, Title } from "@mantine/core";
+"use client";
+
+import { useState } from "react";
+import { ActionIcon, Group, Stack, Text, Title } from "@mantine/core";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import type { HighlightRecord } from "../highlights-data";
-import HighlightCard from "./HighlightCard";
+import FeaturedHighlightCard from "./FeaturedHighlightCard";
 import styles from "../highlights.module.css";
 
 type FeaturedHighlightsProps = {
@@ -12,7 +16,25 @@ type FeaturedHighlightsProps = {
 export default function FeaturedHighlights({
     records,
 }: FeaturedHighlightsProps) {
+    const [currentIndex, setCurrentIndex] = useState(0);
+
     if (records.length === 0) return null;
+
+    const activeIndex = currentIndex % records.length;
+    const activeRecord = records[activeIndex];
+
+    const previousIndex =
+        (activeIndex - 1 + records.length) % records.length;
+    const nextIndex = (activeIndex + 1) % records.length;
+
+    const showSides = records.length > 2;
+    const showNext = records.length > 1;
+
+    function move(direction: -1 | 1) {
+        setCurrentIndex(
+            (current) => (current + direction + records.length) % records.length,
+        );
+    }
 
     return (
         <Stack gap="md">
@@ -22,23 +44,70 @@ export default function FeaturedHighlights({
                 </Title>
 
                 <Text c="dimmed" size="sm" mt={4}>
-                    A few of the standout records found in the colony archive.
+                    Discover standout people and moments from the colony archive.
                 </Text>
             </div>
 
-            <SimpleGrid
-                cols={{ base: 1, sm: 2, lg: 3 }}
-                spacing="md"
+            <div
+                className={[
+                    styles.featuredCarousel,
+                    records.length === 2
+                        ? styles.featuredCarouselTwo
+                        : "",
+                ]
+                    .filter(Boolean)
+                    .join(" ")}
             >
-                {records.map((record, index) => (
-                    <div
-                        key={record.id}
-                        className={index === 0 ? styles.featuredLead : undefined}
-                    >
-                        <HighlightCard record={record} featured />
+                {showSides && (
+                    <div className={styles.featuredSide}>
+                        <FeaturedHighlightCard record={records[previousIndex]} />
                     </div>
-                ))}
-            </SimpleGrid>
+                )}
+
+                <div
+                    className={styles.featuredCenter}
+                    aria-live="polite"
+                    aria-atomic="true"
+                >
+                    <FeaturedHighlightCard record={activeRecord} featured />
+                </div>
+
+                {showNext && (
+                    <div className={styles.featuredSide}>
+                        <FeaturedHighlightCard record={records[nextIndex]} />
+                    </div>
+                )}
+            </div>
+
+            {records.length > 1 && (
+                <Group justify="center" gap="md">
+                    <ActionIcon
+                        variant="subtle"
+                        color="gray"
+                        size="lg"
+                        radius="xl"
+                        aria-label="Previous highlight"
+                        onClick={() => move(-1)}
+                    >
+                        <ChevronLeft size={20} />
+                    </ActionIcon>
+
+                    <Text c="dimmed" size="sm" className={styles.featuredCounter}>
+                        {activeIndex + 1} / {records.length}
+                    </Text>
+
+                    <ActionIcon
+                        variant="subtle"
+                        color="gray"
+                        size="lg"
+                        radius="xl"
+                        aria-label="Next highlight"
+                        onClick={() => move(1)}
+                    >
+                        <ChevronRight size={20} />
+                    </ActionIcon>
+                </Group>
+            )}
         </Stack>
     );
 }

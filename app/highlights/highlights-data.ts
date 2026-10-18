@@ -16,6 +16,7 @@ export type HighlightRecord = {
     description?: string;
     href?: string;
     color?: string | null;
+    imageURL?: string | null;
     icon: "users" | "calendar" | "trophy" | "heart" | "legacy" | "relic" | "sparkles";
     titleParts?: HighlightValuePart[];
     valueParts?: HighlightValuePart[];
@@ -129,7 +130,7 @@ function getAllMostFrequent<T>(
 }
 
 // Stable hash used to vary the featured selection when the archive changes.
-const FEATURED_LIMIT = 3;
+const FEATURED_LIMIT = 5;
 const FEATURED_SNAPSHOT_KEY = "featured-highlights";
 
 type FeaturedCandidate = {
@@ -530,6 +531,7 @@ export async function getHighlightsData() {
                     : value,
             href: singleWinner ? `/colonists/${singleWinner.id}` : undefined,
             color: singleWinner?.legacy?.color,
+            imageURL: singleWinner?.imageURL ?? null,
             description: winners.length === 0
                 ? "Not enough recorded data yet."
                 : winners.length > 1
@@ -1143,6 +1145,7 @@ export async function getHighlightsData() {
                     : "Longest recorded relic ownership chain",
                 value: relic.name,
                 href: `/relics/${relic.id}`,
+                imageURL: relic.primaryImageURL ?? null,
                 description: `${entries.length} recorded ownership entries across ${distinctOwners.size} distinct owners.`,
                 icon: "relic",
                 valueParts: entries.map((entry) => colonistPart(entry.colonist)),
@@ -1255,6 +1258,7 @@ export async function getHighlightsData() {
                     value: getName(child),
                     href: `/colonists/${child.id}`,
                     color: child.legacy?.color ?? legacy.color,
+                    imageURL: child.imageURL ?? null,
                     description:
                         `First recorded biological child of ${founderName} ` +
                         `to carry the ${legacy.name} legacy. ${dateDescription}`,
@@ -1447,6 +1451,7 @@ export async function getHighlightsData() {
                 value: getName(first),
                 href: `/colonists/${first.id}`,
                 color: first.legacy?.color ?? legacyColor,
+                imageURL: first.imageURL ?? null,
                 description: dateLabel,
                 icon,
             };

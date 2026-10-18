@@ -339,3 +339,91 @@
         transform: none;
     }
 }
+
+
+.featuredCarousel {
+    display: grid;
+    grid-template-columns:
+        minmax(0, 0.85fr)
+        minmax(0, 1.3fr)
+        minmax(0, 0.85fr);
+    align-items: center;
+    gap: clamp(10px, 2vw, 24px);
+}
+
+.featuredCenter {
+    min-width: 0;
+    position: relative;
+    z-index: 1;
+}
+
+.featuredCenter .featuredCard {
+    min-height: 190px;
+    border-color: #80502f;
+    background:
+        linear-gradient(145deg, rgb(169 87 40 / 15%), transparent 75%),
+        #191614;
+}
+
+.featuredSide {
+    min-width: 0;
+    opacity: 0.76;
+    transform: scale(0.94);
+    transition:
+        opacity 180ms ease,
+        transform 180ms ease;
+}
+
+.featuredSide:hover {
+    opacity: 1;
+    transform: scale(0.97);
+}
+
+.featuredCounter {
+    min-width: 3.5rem;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+.featuredCarouselTwo {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.85fr);
+}
+
+@media (max-width: 700px) {
+    .featuredCarousel {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .featuredSide {
+        display: none;
+    }
+
+    .featuredCenter .featuredCard {
+        min-height: 155px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .featuredSide {
+        transition: none;
+    }
+}
+
+.featuredImageCard {
+    height: 100%;
+    min-width: 0;
+    overflow: hidden;
+    border-color: #39312c;
+    background: #191614;
+}
+
+.featuredImageCard img {
+    display: block;
+}
+
+.featuredImageCardMain {
+    border-color: #80502f;
+    background:
+        linear-gradient(145deg, rgb(169 87 40 / 10%), transparent 75%),
+        #191614;
+}

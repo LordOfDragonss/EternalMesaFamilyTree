@@ -7,6 +7,7 @@ type DiscoveryColonist = {
     nickname: string | null;
     lastName: string;
     legacy: { color: string | null } | null;
+    imageURL: string | null;
     parents: { parentId: number; type: string }[];
     children: { childId: number; type: string }[];
     colonistSkills: {
@@ -67,6 +68,7 @@ function colonistRecord(
             ? {
                 href: `/colonists/${winners[0].id}`,
                 color: winners[0].legacy?.color ?? null,
+                imageURL: winners[0].imageURL ?? null,
             }
             : {}),
         valueParts: winners.map(colonistPart),

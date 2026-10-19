@@ -344,9 +344,7 @@
 .featuredCarousel {
     display: grid;
     grid-template-columns:
-        minmax(0, 0.85fr)
-        minmax(0, 1.3fr)
-        minmax(0, 0.85fr);
+        minmax(0, 0.85fr) minmax(0, 1.3fr) minmax(0, 0.85fr);
     align-items: center;
     gap: clamp(10px, 2vw, 24px);
 }
@@ -426,4 +424,55 @@
     background:
         linear-gradient(145deg, rgb(169 87 40 / 10%), transparent 75%),
         #191614;
+}
+
+.updatesSection {
+    width: 100%;
+}
+
+.updatesPanel {
+    overflow: hidden;
+    border: 1px solid #302820;
+    border-radius: 12px;
+    background: #141414;
+}
+
+.updatesContent {
+    padding: 0 1.1rem 1.1rem;
+}
+
+.updateEntry {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 1rem 0;
+    border-top: 1px solid #292929;
+}
+
+.updateChange {
+    display: grid;
+    grid-template-columns: 76px minmax(0, 1fr);
+    align-items: start;
+    gap: 10px;
+}
+
+.updateLabel {
+    padding-top: 2px;
+}
+
+.updateValue {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 500px) {
+
+    .updatesContent {
+        padding: 0 0.9rem 0.9rem;
+    }
+
+    .updateChange {
+        grid-template-columns: 64px minmax(0, 1fr);
+        gap: 8px;
+    }
 }

@@ -132,12 +132,30 @@ function getAllMostFrequent<T>(
 // Stable hash used to vary the featured selection when the archive changes.
 const FEATURED_LIMIT = 5;
 const FEATURED_SNAPSHOT_KEY = "featured-highlights";
+const UPDATES_SNAPSHOT_KEY = "highlight-updates";
+const UPDATE_RETENTION_MS = 3 * 24 * 60 * 60 * 1000;
+
+type SnapshotValue = {
+    title: string;
+    value: string;
+    description: string;
+    href: string;
+    color: string | null;
+    valueParts: HighlightValuePart[];
+};
+
+export type HighlightUpdate = {
+    id: string;
+    title: string;
+    detectedAt: string;
+    previous: SnapshotValue;
+    current: SnapshotValue;
+};
 
 type FeaturedCandidate = {
     record: HighlightRecord;
     sectionId: string;
     colonistIds: Set<number>;
-    changed: boolean;
 };
 
 function getRecordFingerprint(record: HighlightRecord): string {
@@ -155,64 +173,171 @@ function getRecordFingerprint(record: HighlightRecord): string {
     });
 }
 
-async function getChangedHighlightIds(
+function parseSnapshotValue(fingerprint: string): SnapshotValue | null {
+    try {
+        const parsed = JSON.parse(fingerprint) as Partial<SnapshotValue>;
+
+        if (
+            typeof parsed.title !== "string" ||
+            typeof parsed.value !== "string"
+        ) {
+            return null;
+        }
+
+        return {
+            title: parsed.title,
+            value: parsed.value,
+            description: parsed.description ?? "",
+            href: parsed.href ?? "",
+            color: parsed.color ?? null,
+            valueParts: Array.isArray(parsed.valueParts)
+                ? parsed.valueParts
+                : [],
+        };
+    } catch {
+        return null;
+    }
+}
+
+function getCurrentHighlightSnapshot(
     sections: HighlightSectionData[],
-): Promise<Set<string>> {
-    const currentSnapshot: Record<string, string> = {};
+): Record<string, string> {
+    const snapshot: Record<string, string> = {};
 
     for (const section of sections) {
         for (const record of section.records) {
             if (record.value === "No data") continue;
 
-            currentSnapshot[record.id] = getRecordFingerprint(record);
+            snapshot[record.id] = getRecordFingerprint(record);
         }
     }
+
+    return snapshot;
+}
+
+async function trackHighlightUpdates(
+    sections: HighlightSectionData[],
+): Promise<HighlightUpdate[]> {
+    const currentSnapshot = getCurrentHighlightSnapshot(sections);
 
     const previous = await prisma.highlightSnapshot.findUnique({
         where: { key: FEATURED_SNAPSHOT_KEY },
     });
 
-    // The first visit establishes a baseline. It shouldn't make every
-    // existing highlight look like a brand-new achievement.
+    let newUpdates: HighlightUpdate[] = [];
+
     if (!previous) {
+        // First run establishes a baseline instead of reporting every
+        // existing highlight as a new change.
         await prisma.highlightSnapshot.create({
             data: {
                 key: FEATURED_SNAPSHOT_KEY,
                 value: JSON.stringify(currentSnapshot),
             },
         });
+    } else {
+        const previousSnapshot = JSON.parse(previous.value) as Record<
+            string,
+            string
+        >;
 
-        return new Set();
+        const currentRecords = new Map<string, HighlightRecord>();
+
+        for (const section of sections) {
+            for (const record of section.records) {
+                currentRecords.set(record.id, record);
+            }
+        }
+
+        const detectedAt = new Date().toISOString();
+
+        for (const [id, fingerprint] of Object.entries(currentSnapshot)) {
+            const previousFingerprint = previousSnapshot[id];
+
+            // Only report changes to an existing highlight. New entries
+            // aren't necessarily records that have changed hands.
+            if (
+                !previousFingerprint ||
+                previousFingerprint === fingerprint
+            ) {
+                continue;
+            }
+
+            const oldValue = parseSnapshotValue(previousFingerprint);
+            const record = currentRecords.get(id);
+            const currentValue = parseSnapshotValue(fingerprint);
+
+            if (!oldValue || !record || !currentValue) continue;
+
+            newUpdates.push({
+                id,
+                title: record.title,
+                detectedAt,
+                previous: oldValue,
+                current: currentValue,
+            });
+        }
+
+        // Advance the baseline regardless of whether the change is
+        // interesting enough to produce a visible update.
+        await prisma.highlightSnapshot.update({
+            where: { key: FEATURED_SNAPSHOT_KEY },
+            data: {
+                value: JSON.stringify(currentSnapshot),
+            },
+        });
     }
 
-    const previousSnapshot = JSON.parse(previous.value) as Record<
-        string,
-        string
-    >;
+    const historyRow = await prisma.highlightSnapshot.findUnique({
+        where: { key: UPDATES_SNAPSHOT_KEY },
+    });
 
-    const changedIds = new Set<string>();
+    const now = Date.now();
+    const cutoff = now - UPDATE_RETENTION_MS;
 
-    for (const [id, fingerprint] of Object.entries(currentSnapshot)) {
-        if (previousSnapshot[id] !== fingerprint) {
-            changedIds.add(id);
+    let history: HighlightUpdate[] = [];
+
+    if (historyRow) {
+        try {
+            const parsed = JSON.parse(historyRow.value) as HighlightUpdate[];
+            if (Array.isArray(parsed)) history = parsed;
+        } catch {
+            // Recover gracefully if the stored history is malformed.
+            history = [];
         }
     }
 
-    await prisma.highlightSnapshot.update({
-        where: { key: FEATURED_SNAPSHOT_KEY },
-        data: {
-            value: JSON.stringify(currentSnapshot),
-        },
+    history = history.filter((update) => {
+        const timestamp = Date.parse(update.detectedAt);
+        return Number.isFinite(timestamp) && timestamp >= cutoff;
     });
 
-    return changedIds;
+    history.push(...newUpdates);
+    history.sort(
+        (a, b) =>
+            Date.parse(b.detectedAt) - Date.parse(a.detectedAt),
+    );
+
+    if (historyRow) {
+        await prisma.highlightSnapshot.update({
+            where: { key: UPDATES_SNAPSHOT_KEY },
+            data: { value: JSON.stringify(history) },
+        });
+    } else {
+        await prisma.highlightSnapshot.create({
+            data: {
+                key: UPDATES_SNAPSHOT_KEY,
+                value: JSON.stringify(history),
+            },
+        });
+    }
+
+    return history;
 }
 
 async function selectFeaturedHighlights(
     sections: HighlightSectionData[],
 ): Promise<HighlightRecord[]> {
-    const changedIds = await getChangedHighlightIds(sections);
-
     const candidates: FeaturedCandidate[] = sections.flatMap((section) =>
         section.records
             .filter((record) => record.value !== "No data")
@@ -220,13 +345,12 @@ async function selectFeaturedHighlights(
                 record,
                 sectionId: section.id,
                 colonistIds: getFeaturedColonistIds(record),
-                changed: changedIds.has(record.id),
             })),
     );
 
     if (candidates.length === 0) return [];
 
-    // Randomise candidates on each fresh server render.
+    // Featured is now a varied selection, independent of update tracking.
     const shuffled = candidates
         .map((candidate) => ({
             ...candidate,
@@ -272,37 +396,18 @@ async function selectFeaturedHighlights(
         }
     }
 
-    // Changed and newly available records get first priority.
-    const changedCandidates = shuffled.filter(
-        (candidate) => candidate.changed,
-    );
-
-    for (const candidate of changedCandidates) {
+    // Prefer variety across sections and colonists.
+    for (const candidate of shuffled) {
         trySelect(candidate, true, true);
     }
 
-    for (const candidate of changedCandidates) {
+    for (const candidate of shuffled) {
         trySelect(candidate, false, true);
     }
 
-    // Fill remaining slots with random discoveries.
+    // Relax the duplicate-colonist restriction only if needed.
     for (const candidate of shuffled) {
-        if (!candidate.changed) {
-            trySelect(candidate, true, true);
-        }
-    }
-
-    for (const candidate of shuffled) {
-        if (!candidate.changed) {
-            trySelect(candidate, false, true);
-        }
-    }
-
-    // If necessary, relax the duplicate-colonist restriction to fill slots.
-    for (const candidate of shuffled) {
-        if (!candidate.changed) {
-            trySelect(candidate, false, false);
-        }
+        trySelect(candidate, false, false);
     }
 
     return selected.map(({ record }) => record);
@@ -1656,7 +1761,10 @@ export async function getHighlightsData() {
         },
     ];
 
-    const featured = await selectFeaturedHighlights(sections);
+    const [featured, updates] = await Promise.all([
+        selectFeaturedHighlights(sections),
+        trackHighlightUpdates(sections),
+    ]);
 
     return {
         totals: {
@@ -1668,6 +1776,7 @@ export async function getHighlightsData() {
         },
         sections,
         featured,
+        updates,
         activityYears,
     };
 }

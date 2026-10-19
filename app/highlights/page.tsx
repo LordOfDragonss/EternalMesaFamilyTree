@@ -17,6 +17,7 @@ import HighlightSection from "./components/HighlightSection";
 import FeaturedHighlights from "./components/FeaturedHighlights";
 import ActivityChart from "./components/ActivityChart";
 import styles from "./highlights.module.css";
+import HighlightUpdates from "./components/HighlightUpdates";
 
 export default async function HighlightsPage() {
     const data = await getHighlightsData();
@@ -97,6 +98,8 @@ export default async function HighlightsPage() {
                 </SimpleGrid>
 
                 <FeaturedHighlights records={data.featured} />
+
+                <HighlightUpdates updates={data.updates} />
 
                 <ActivityChart years={data.activityYears} />
 

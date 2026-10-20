@@ -1,11 +1,14 @@
+
 "use client";
 
 import { Select } from "@mantine/core";
 import { useEffect, useRef, useState } from "react";
+import { useColonistIdentity } from "@/app/lib/ColonistIdentityContext";
 
 export default function GenderSelect() {
     const [error, setError] = useState<string | undefined>();
     const selectRef = useRef<HTMLInputElement>(null);
+    const { gender, setGender } = useColonistIdentity();
 
     useEffect(() => {
         const input = selectRef.current;
@@ -48,21 +51,21 @@ export default function GenderSelect() {
             label="Gender"
             placeholder="Gender"
             data={[
-                {
-                    value: "Male",
-                    label: "Male",
-                },
-                {
-                    value: "Female",
-                    label: "Female",
-                },
+                { value: "Male", label: "Male" },
+                { value: "Female", label: "Female" },
             ]}
+            value={gender || null}
             required
             error={error}
-            onChange={() => setError(undefined)}
-            style={{
-                width: 140,
+            onChange={(value) => {
+                setGender(
+                    value === "Male" || value === "Female"
+                        ? value
+                        : ""
+                );
+                setError(undefined);
             }}
+            style={{ width: 140 }}
         />
     );
 }

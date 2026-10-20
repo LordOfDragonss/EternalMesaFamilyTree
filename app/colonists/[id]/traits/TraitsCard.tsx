@@ -14,6 +14,7 @@ import {
 import { Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { formatTraitDescription } from "@/app/lib/formatTraitDescription";
 
 type Trait = {
     id: number;
@@ -27,14 +28,24 @@ type ColonistTrait = {
     trait: Trait;
 };
 
+
 type TraitCardProps = {
     colonistId: number;
+    colonist: {
+        firstName: string;
+        nickname: string | null;
+        gender: "Male" | "Female";
+    };
+    legacyColor: string | null;
     initialTraits: ColonistTrait[];
     traits: Trait[];
 };
 
+
 export default function TraitCard({
     colonistId,
+    colonist,
+    legacyColor,
     initialTraits,
     traits,
 }: TraitCardProps) {
@@ -157,12 +168,23 @@ export default function TraitCard({
                                 <Tooltip
                                     key={colonistTrait.traitId}
                                     label={
-                                        colonistTrait.trait.description ??
-                                        "No description available."
+                                        colonistTrait.trait.description
+                                            ? formatTraitDescription(
+                                                colonistTrait.trait.description,
+                                                colonist,
+                                                legacyColor
+                                            )
+                                            : "No description available."
                                     }
                                     multiline
                                     maw={320}
                                     withArrow
+                                    color="#161616"
+                                    styles={{
+                                        tooltip: {
+                                            border: "1px solid #292929",
+                                        },
+                                    }}
                                 >
                                     <Group
                                         gap="xs"

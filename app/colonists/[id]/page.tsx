@@ -598,6 +598,12 @@ export default async function ColonistPage({
                 {/* Traits */}
                 <TraitsCard
                     colonistId={colonist.id}
+                    colonist={{
+                        firstName: colonist.firstName,
+                        nickname: colonist.nickname,
+                        gender: colonist.gender,
+                    }}
+                    legacyColor={colonist.legacy?.color ?? null}
                     initialTraits={colonist.colonistTraits}
                     traits={traits}
                 />

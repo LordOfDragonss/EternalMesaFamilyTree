@@ -12,6 +12,7 @@ import {
 } from "@mantine/core";
 import { Plus, X } from "lucide-react";
 import { useState } from "react";
+import { useColonistIdentity } from "@/app/lib/ColonistIdentityContext";
 
 type LegacyOption = {
     value: string;
@@ -35,6 +36,7 @@ export default function LegacySelector({
     function cancelCreateLegacy() {
         setCreatingLegacy(false);
     }
+    const { setLegacyColor } = useColonistIdentity();
 
     if (creatingLegacy) {
         return (
@@ -75,6 +77,7 @@ export default function LegacySelector({
                             "#8B5A83",
                             "#B22222",
                         ]}
+                        onChange={(value) => setLegacyColor(value || null)}
                         style={{ width: 180 }}
                     />
                 </Group>
@@ -122,7 +125,15 @@ export default function LegacySelector({
                 data={legacyOptions}
                 defaultValue={defaultValue}
                 value={selectedValue}
-                onChange={setSelectedValue}
+                onChange={(value) => {
+                    setSelectedValue(value);
+
+                    const selectedLegacy = legacyOptions.find(
+                        (legacy) => legacy.value === value
+                    );
+
+                    setLegacyColor(selectedLegacy?.color ?? null);
+                }}
                 clearable
                 searchable
                 style={{ flex: 1 }}

@@ -1,3 +1,4 @@
+
 import { prisma } from "@/lib/prisma";
 import {
     Button,
@@ -12,8 +13,8 @@ import {
 } from "@mantine/core";
 import Relationships from "./Relationships";
 import LegacySelector from "./LegacySelector";
-import PortraitUpload from "./PortraitUpload";
-import GenderSelect from "./GenderSelect";
+import ColonistIdentityFields from "./ColonistIdentityFields";
+import { ColonistIdentityProvider } from "@/app/lib/ColonistIdentityContext";
 import TraitsEditor from "../[id]/traits/TraitsEditor";
 import SkillsEditor, {
     CreateSkill,
@@ -44,7 +45,6 @@ export default async function NewColonist() {
                     },
                 },
             },
-
             orderBy: [
                 {
                     lastName: "asc",
@@ -98,17 +98,16 @@ export default async function NewColonist() {
         color: colonist.legacy?.color ?? null,
     }));
 
-    const initialSkills: CreateSkill[] =
-        skills.map((skill) => ({
-            skillId: skill.id,
-            level: 0,
-            passion: "None",
-            isKnown: true,
-            skill: {
-                id: skill.id,
-                name: skill.name,
-            },
-        }));
+    const initialSkills: CreateSkill[] = skills.map((skill) => ({
+        skillId: skill.id,
+        level: 0,
+        passion: "None",
+        isKnown: true,
+        skill: {
+            id: skill.id,
+            name: skill.name,
+        },
+    }));
 
     const initialExpertises: CreateExpertise[] = [];
 
@@ -148,298 +147,220 @@ export default async function NewColonist() {
                     method="POST"
                     encType="multipart/form-data"
                 >
-                    <Stack gap="lg">
+                    <ColonistIdentityProvider>
+                        <Stack gap="lg">
+                            {/* Identity */}
+                            <ColonistIdentityFields />
 
-                        {/* Identity */}
-                        <Card
-                            shadow="sm"
-                            padding="xl"
-                            radius="md"
-                            withBorder
-                            bg="#161616"
-                            style={{
-                                borderColor: "#292929",
-                            }}
-                        >
-                            <Stack gap="md">
-                                <div>
-                                    <Title order={3}>
-                                        Identity
-                                    </Title>
-
-                                    <Text
-                                        c="dimmed"
-                                        size="sm"
-                                        mt={2}
-                                    >
-                                        The colonist's name and basic information.
-                                    </Text>
-                                </div>
-
-                                <Group
-                                    align="flex-start"
-                                    wrap="nowrap"
-                                >
-                                    <PortraitUpload />
-
-                                    <Stack
-                                        style={{
-                                            flex: 1,
-                                        }}
-                                        gap="md"
-                                    >
-                                        <Group grow>
-                                            <TextInput
-                                                name="firstName"
-                                                label="First name"
-                                                placeholder="First name"
-                                                required
-                                            />
-
-                                            <TextInput
-                                                name="nickname"
-                                                label="Nickname"
-                                                placeholder="Nickname"
-                                            />
-
-                                            <TextInput
-                                                name="lastName"
-                                                label="Last name"
-                                                placeholder="Last name"
-                                                required
-                                            />
-                                        </Group>
-
-                                        <Group
-                                            align="flex-end"
-                                            wrap="nowrap"
-                                        >
-                                            <TextInput
-                                                name="title"
-                                                label="Title"
-                                                placeholder="Optional title"
-                                                style={{
-                                                    flex: 1,
-                                                }}
-                                            />
-
-                                            <GenderSelect />
-                                        </Group>
-                                    </Stack>
-                                </Group>
-                            </Stack>
-                        </Card>
-
-                        {/* Birth */}
-                        <Card
-                            shadow="sm"
-                            padding="xl"
-                            radius="md"
-                            withBorder
-                            bg="#161616"
-                            style={{
-                                borderColor: "#292929",
-                            }}
-                        >
-                            <Stack gap="md">
-                                <div>
-                                    <Title order={3}>
-                                        Birth
-                                    </Title>
-
-                                    <Text
-                                        c="dimmed"
-                                        size="sm"
-                                        mt={2}
-                                    >
-                                        When the colonist was born.
-                                    </Text>
-                                </div>
-
-                                <Group grow>
-                                    <Select
-                                        name="birthDay"
-                                        label="Day"
-                                        placeholder="Day"
-                                        data={days}
-                                        clearable
-                                    />
-
-                                    <Select
-                                        name="birthMonth"
-                                        label="Month"
-                                        placeholder="Month"
-                                        data={months}
-                                        clearable
-                                    />
-
-                                    <TextInput
-                                        name="birthYear"
-                                        label="Year"
-                                        placeholder="Year"
-                                        type="number"
-                                    />
-                                </Group>
-                            </Stack>
-                        </Card>
-
-                        {/* Death */}
-                        <Card
-                            shadow="sm"
-                            padding="xl"
-                            radius="md"
-                            withBorder
-                            bg="#161616"
-                            style={{
-                                borderColor: "#292929",
-                            }}
-                        >
-                            <Stack gap="md">
-                                <div>
-                                    <Title order={3}>
-                                        Death
-                                    </Title>
-
-                                    <Text
-                                        c="dimmed"
-                                        size="sm"
-                                        mt={2}
-                                    >
-                                        Enter a death date if known, or mark the colonist as dead if
-                                        their date of death is unknown.
-                                    </Text>
-                                </div>
-
-                                <Checkbox
-                                    name="deathDateUnknown"
-                                    label="Death date unknown"
-                                    description="The colonist is deceased, but their date of death is not recorded."
-                                />
-
-                                <Group grow>
-                                    <Select
-                                        name="deathDay"
-                                        label="Day"
-                                        placeholder="Day"
-                                        data={days}
-                                        clearable
-                                    />
-
-                                    <Select
-                                        name="deathMonth"
-                                        label="Month"
-                                        placeholder="Month"
-                                        data={months}
-                                        clearable
-                                    />
-
-                                    <TextInput
-                                        name="deathYear"
-                                        label="Year"
-                                        placeholder="Year"
-                                        type="number"
-                                    />
-                                </Group>
-                            </Stack>
-                        </Card>
-
-                        {/* Legacy */}
-                        <Card
-                            shadow="sm"
-                            padding="xl"
-                            radius="md"
-                            withBorder
-                            bg="#161616"
-                            style={{
-                                borderColor: "#292929",
-                            }}
-                        >
-                            <Stack gap="md">
-                                <div>
-                                    <Title order={3}>
-                                        Legacy
-                                    </Title>
-
-                                    <Text
-                                        c="dimmed"
-                                        size="sm"
-                                        mt={2}
-                                    >
-                                        Associate this colonist with an existing
-                                        family line.
-                                    </Text>
-                                </div>
-
-                                <LegacySelector
-                                    legacyOptions={legacyOptions}
-                                />
-                            </Stack>
-                        </Card>
-
-                        {/* Relationships */}
-                        <Card
-                            shadow="sm"
-                            padding="xl"
-                            radius="md"
-                            withBorder
-                            bg="#161616"
-                            style={{
-                                borderColor: "#292929",
-                            }}
-                        >
-                            <Stack gap="xl">
-                                <div>
-                                    <Title order={3}>
-                                        Relationships
-                                    </Title>
-
-                                    <Text
-                                        c="dimmed"
-                                        size="sm"
-                                        mt={2}
-                                    >
-                                        Connect this colonist to existing family members.
-                                    </Text>
-                                </div>
-
-                                <Relationships
-                                    colonistOptions={colonistOptions}
-                                />
-                            </Stack>
-                        </Card>
-
-                        {/* Traits */}
-                        <TraitsEditor
-                            mode="create"
-                            traits={traits}
-                        />
-
-                        {/* Skills */}
-                        <SkillsEditor
-                            mode="create"
-                            skills={initialSkills}
-                        />
-
-                        {/* Expertises */}
-                        <ExpertiseEditor
-                            mode="create"
-                            expertises={initialExpertises}
-                            availableExpertises={
-                                availableExpertises
-                            }
-                        />
-
-                        {/* Actions */}
-                        <Group justify="flex-end">
-                            <Button
-                                type="submit"
-                                color="mesa"
-                                size="md"
+                            {/* Birth */}
+                            <Card
+                                shadow="sm"
+                                padding="xl"
+                                radius="md"
+                                withBorder
+                                bg="#161616"
+                                style={{
+                                    borderColor: "#292929",
+                                }}
                             >
-                                Create Colonist
-                            </Button>
-                        </Group>
-                    </Stack>
+                                <Stack gap="md">
+                                    <div>
+                                        <Title order={3}>
+                                            Birth
+                                        </Title>
+
+                                        <Text
+                                            c="dimmed"
+                                            size="sm"
+                                            mt={2}
+                                        >
+                                            When the colonist was born.
+                                        </Text>
+                                    </div>
+
+                                    <Group grow>
+                                        <Select
+                                            name="birthDay"
+                                            label="Day"
+                                            placeholder="Day"
+                                            data={days}
+                                            clearable
+                                        />
+
+                                        <Select
+                                            name="birthMonth"
+                                            label="Month"
+                                            placeholder="Month"
+                                            data={months}
+                                            clearable
+                                        />
+
+                                        <TextInput
+                                            name="birthYear"
+                                            label="Year"
+                                            placeholder="Year"
+                                            type="number"
+                                        />
+                                    </Group>
+                                </Stack>
+                            </Card>
+
+                            {/* Death */}
+                            <Card
+                                shadow="sm"
+                                padding="xl"
+                                radius="md"
+                                withBorder
+                                bg="#161616"
+                                style={{
+                                    borderColor: "#292929",
+                                }}
+                            >
+                                <Stack gap="md">
+                                    <div>
+                                        <Title order={3}>
+                                            Death
+                                        </Title>
+
+                                        <Text
+                                            c="dimmed"
+                                            size="sm"
+                                            mt={2}
+                                        >
+                                            Enter a death date if known, or mark the colonist as dead if
+                                            their date of death is unknown.
+                                        </Text>
+                                    </div>
+
+                                    <Checkbox
+                                        name="deathDateUnknown"
+                                        label="Death date unknown"
+                                        description="The colonist is deceased, but their date of death is not recorded."
+                                    />
+
+                                    <Group grow>
+                                        <Select
+                                            name="deathDay"
+                                            label="Day"
+                                            placeholder="Day"
+                                            data={days}
+                                            clearable
+                                        />
+
+                                        <Select
+                                            name="deathMonth"
+                                            label="Month"
+                                            placeholder="Month"
+                                            data={months}
+                                            clearable
+                                        />
+
+                                        <TextInput
+                                            name="deathYear"
+                                            label="Year"
+                                            placeholder="Year"
+                                            type="number"
+                                        />
+                                    </Group>
+                                </Stack>
+                            </Card>
+
+                            {/* Legacy */}
+                            <Card
+                                shadow="sm"
+                                padding="xl"
+                                radius="md"
+                                withBorder
+                                bg="#161616"
+                                style={{
+                                    borderColor: "#292929",
+                                }}
+                            >
+                                <Stack gap="md">
+                                    <div>
+                                        <Title order={3}>
+                                            Legacy
+                                        </Title>
+
+                                        <Text
+                                            c="dimmed"
+                                            size="sm"
+                                            mt={2}
+                                        >
+                                            Associate this colonist with an existing
+                                            family line.
+                                        </Text>
+                                    </div>
+
+                                    <LegacySelector
+                                        legacyOptions={legacyOptions}
+                                    />
+                                </Stack>
+                            </Card>
+
+                            {/* Relationships */}
+                            <Card
+                                shadow="sm"
+                                padding="xl"
+                                radius="md"
+                                withBorder
+                                bg="#161616"
+                                style={{
+                                    borderColor: "#292929",
+                                }}
+                            >
+                                <Stack gap="xl">
+                                    <div>
+                                        <Title order={3}>
+                                            Relationships
+                                        </Title>
+
+                                        <Text
+                                            c="dimmed"
+                                            size="sm"
+                                            mt={2}
+                                        >
+                                            Connect this colonist to existing family members.
+                                        </Text>
+                                    </div>
+
+                                    <Relationships
+                                        colonistOptions={colonistOptions}
+                                    />
+                                </Stack>
+                            </Card>
+
+                            {/* Traits */}
+                            <TraitsEditor
+                                mode="create"
+                                traits={traits}
+                            />
+
+                            {/* Skills */}
+                            <SkillsEditor
+                                mode="create"
+                                skills={initialSkills}
+                            />
+
+                            {/* Expertises */}
+                            <ExpertiseEditor
+                                mode="create"
+                                expertises={initialExpertises}
+                                availableExpertises={availableExpertises}
+                            />
+
+                            {/* Actions */}
+                            <Group justify="flex-end">
+                                <Button
+                                    type="submit"
+                                    color="mesa"
+                                    size="md"
+                                >
+                                    Create Colonist
+                                </Button>
+                            </Group>
+                        </Stack>
+                    </ColonistIdentityProvider>
                 </form>
             </Stack>
         </main>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -13,6 +14,8 @@ import {
 } from "@mantine/core";
 import { Plus, X } from "lucide-react";
 import { useMemo, useState } from "react";
+import { formatTraitDescription } from "@/app/lib/formatTraitDescription";
+import { useColonistIdentity } from "../../../lib/ColonistIdentityContext";
 
 export type CreateTrait = {
     traitId: number;
@@ -39,6 +42,13 @@ type TraitsEditorProps = {
 export default function TraitsEditor({
     traits,
 }: TraitsEditorProps) {
+    const {
+        firstName,
+        nickname,
+        gender,
+        legacyColor,
+    } = useColonistIdentity();
+
     const [selectedTrait, setSelectedTrait] =
         useState<string | null>(null);
 
@@ -59,9 +69,7 @@ export default function TraitsEditor({
             )
             .map((trait) => ({
                 value: trait.id.toString(),
-                label:
-                    trait.name ??
-                    trait.defName,
+                label: trait.name ?? trait.defName,
             }));
     }, [traits, selectedTraits]);
 
@@ -70,42 +78,32 @@ export default function TraitsEditor({
             return;
         }
 
-        const traitId =
-            Number(selectedTrait);
+        const traitId = Number(selectedTrait);
 
-        const trait =
-            traits.find(
-                (trait) =>
-                    trait.id === traitId
-            );
+        const trait = traits.find(
+            (trait) => trait.id === traitId
+        );
 
         if (!trait) {
             return;
         }
 
-        setSelectedTraits(
-            (current) => [
-                ...current,
-                {
-                    traitId: trait.id,
-                    trait,
-                },
-            ]
-        );
+        setSelectedTraits((current) => [
+            ...current,
+            {
+                traitId: trait.id,
+                trait,
+            },
+        ]);
 
         setSelectedTrait(null);
     }
 
-    function removeTrait(
-        traitId: number
-    ) {
-        setSelectedTraits(
-            (current) =>
-                current.filter(
-                    (trait) =>
-                        trait.traitId !==
-                        traitId
-                )
+    function removeTrait(traitId: number) {
+        setSelectedTraits((current) =>
+            current.filter(
+                (trait) => trait.traitId !== traitId
+            )
         );
     }
 
@@ -126,11 +124,7 @@ export default function TraitsEditor({
                         Traits
                     </Title>
 
-                    <Text
-                        c="dimmed"
-                        size="sm"
-                        mt={2}
-                    >
+                    <Text c="dimmed" size="sm" mt={2}>
                         Traits this colonist possesses.
                     </Text>
                 </div>
@@ -151,38 +145,44 @@ export default function TraitsEditor({
                         {selectedTraits.map(
                             (colonistTrait) => {
                                 const traitName =
-                                    colonistTrait.trait
-                                        .name ??
-                                    colonistTrait.trait
-                                        .defName;
+                                    colonistTrait.trait.name ??
+                                    colonistTrait.trait.defName;
 
                                 return (
                                     <Tooltip
-                                        key={
-                                            colonistTrait.traitId
-                                        }
+                                        key={colonistTrait.traitId}
                                         label={
-                                            colonistTrait
-                                                .trait
-                                                .description ??
-                                            "No description available."
+                                            colonistTrait.trait.description
+                                                ? formatTraitDescription(
+                                                    colonistTrait.trait.description,
+                                                    {
+                                                        firstName,
+                                                        nickname,
+                                                        gender,
+                                                    },
+                                                    legacyColor
+                                                )
+                                                : "No description available."
                                         }
                                         multiline
                                         maw={320}
                                         withArrow
+                                        color="#161616"
+                                        styles={{
+                                            tooltip: {
+                                                border: "1px solid #292929",
+                                            },
+                                        }}
                                     >
                                         <Group
                                             gap="xs"
                                             justify="space-between"
                                             wrap="nowrap"
                                             style={{
-                                                border:
-                                                    "1px solid #292929",
+                                                border: "1px solid #292929",
                                                 borderRadius: 6,
-                                                backgroundColor:
-                                                    "#1d1d1d",
-                                                padding:
-                                                    "0.65rem 0.75rem",
+                                                backgroundColor: "#1d1d1d",
+                                                padding: "0.65rem 0.75rem",
                                                 minHeight: 44,
                                             }}
                                         >
@@ -191,13 +191,10 @@ export default function TraitsEditor({
                                                 fw={500}
                                                 truncate
                                                 style={{
-                                                    minWidth:
-                                                        0,
+                                                    minWidth: 0,
                                                 }}
                                             >
-                                                {
-                                                    traitName
-                                                }
+                                                {traitName}
                                             </Text>
 
                                             <ActionIcon
@@ -211,11 +208,7 @@ export default function TraitsEditor({
                                                     )
                                                 }
                                             >
-                                                <X
-                                                    size={
-                                                        14
-                                                    }
-                                                />
+                                                <X size={14} />
                                             </ActionIcon>
                                         </Group>
                                     </Tooltip>
@@ -230,12 +223,8 @@ export default function TraitsEditor({
                         searchable
                         clearable
                         data={availableTraits}
-                        value={
-                            selectedTrait
-                        }
-                        onChange={
-                            setSelectedTrait
-                        }
+                        value={selectedTrait}
+                        onChange={setSelectedTrait}
                         placeholder="Search traits..."
                         nothingFoundMessage="No traits found"
                         style={{
@@ -249,34 +238,22 @@ export default function TraitsEditor({
                             variant="filled"
                             color="mesa"
                             size="lg"
-                            onClick={
-                                addTrait
-                            }
-                            disabled={
-                                !selectedTrait
-                            }
+                            onClick={addTrait}
+                            disabled={!selectedTrait}
                         >
-                            <Plus
-                                size={18}
-                            />
+                            <Plus size={18} />
                         </ActionIcon>
                     </Tooltip>
                 </Group>
 
-                {selectedTraits.map(
-                    (trait) => (
-                        <input
-                            key={
-                                trait.traitId
-                            }
-                            type="hidden"
-                            name="traitId[]"
-                            value={
-                                trait.traitId
-                            }
-                        />
-                    )
-                )}
+                {selectedTraits.map((trait) => (
+                    <input
+                        key={trait.traitId}
+                        type="hidden"
+                        name="traitId[]"
+                        value={trait.traitId}
+                    />
+                ))}
             </Stack>
         </Card>
     );

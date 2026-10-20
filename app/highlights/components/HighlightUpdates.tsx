@@ -22,6 +22,7 @@ type Props = {
     updates: HighlightUpdate[];
 };
 
+
 function UpdateTitle({
     title,
     titleParts,
@@ -29,36 +30,35 @@ function UpdateTitle({
     title: string;
     titleParts?: HighlightValuePart[];
 }) {
-    if (!titleParts || titleParts.length === 0) {
-        return <Text fw={700}>{title}</Text>;
-    }
-
     return (
-        <Group gap={0} wrap="wrap">
-            {titleParts.map((part, index) =>
-                part.href ? (
-                    <Anchor
-                        key={`${part.label}-${index}`}
-                        href={part.href}
-                        c={part.color ?? undefined}
-                        fw={700}
-                    >
-                        {part.label}
-                    </Anchor>
-                ) : (
-                    <Text
-                        key={`${part.label}-${index}`}
-                        component="span"
-                        fw={700}
-                        c={part.color ?? undefined}
-                    >
-                        {part.label}
-                    </Text>
-                ),
-            )}
-        </Group>
+        <Text fw={700}>
+            {title}
+            {titleParts?.map((part, index) => (
+                <Text
+                    key={`${part.label}-${index}`}
+                    component="span"
+                    c={part.color ?? "inherit"}
+                    fw={700}
+                >
+                    {" "}
+                    {part.href ? (
+                        <Anchor
+                            href={part.href}
+                            c={part.color ?? "inherit"}
+                            fw={700}
+                            underline="never"
+                        >
+                            {part.label}
+                        </Anchor>
+                    ) : (
+                        part.label
+                    )}
+                </Text>
+            ))}
+        </Text>
     );
 }
+
 function UpdateValue({
     value,
     href,

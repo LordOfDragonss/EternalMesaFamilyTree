@@ -243,6 +243,13 @@ async function trackHighlightUpdates(
     sections: HighlightSectionData[],
 ): Promise<HighlightUpdate[]> {
     const currentSnapshot = getCurrentHighlightSnapshot(sections);
+    const currentRecords = new Map<string, HighlightRecord>();
+
+    for (const section of sections) {
+        for (const record of section.records) {
+            currentRecords.set(record.id, record);
+        }
+    }
 
     const previous = await prisma.highlightSnapshot.findUnique({
         where: { key: FEATURED_SNAPSHOT_KEY },
@@ -264,8 +271,6 @@ async function trackHighlightUpdates(
             string,
             string
         >;
-
-        const currentRecords = new Map<string, HighlightRecord>();
 
         for (const section of sections) {
             for (const record of section.records) {

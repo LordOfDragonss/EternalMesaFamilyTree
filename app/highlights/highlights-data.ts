@@ -137,6 +137,7 @@ const UPDATE_RETENTION_MS = 3 * 24 * 60 * 60 * 1000;
 
 type SnapshotValue = {
     title: string;
+    titleParts: HighlightValuePart[];
     value: string;
     description: string;
     href: string;
@@ -144,33 +145,39 @@ type SnapshotValue = {
     valueParts: HighlightValuePart[];
 };
 
-export type HighlightUpdate = {
-    id: string;
-    title: string;
-    detectedAt: string;
-    previous: SnapshotValue;
-    current: SnapshotValue;
-};
-
-type FeaturedCandidate = {
-    record: HighlightRecord;
-    sectionId: string;
-    colonistIds: Set<number>;
-};
+function normalizeParts(parts: HighlightValuePart[] = []) {
+    return parts
+        .map((part) => ({
+            label: part.label,
+            href: part.href ?? "",
+        }))
+        .sort((a, b) =>
+            `${a.href}|${a.label}`.localeCompare(`${b.href}|${b.label}`),
+        );
+}
 
 function getRecordFingerprint(record: HighlightRecord): string {
     return JSON.stringify({
         title: record.title,
+        titleParts: record.titleParts ?? [],
         value: record.value,
         description: record.description ?? "",
         href: record.href ?? "",
         color: record.color ?? null,
-        valueParts: (record.valueParts ?? []).map((part) => ({
-            label: part.label,
-            href: part.href ?? "",
-            color: part.color ?? null,
-        })),
+        valueParts: record.valueParts ?? [],
     });
+}
+
+/**
+ * Compares the actual result, not its presentation.
+ * For multi-person records, the order of the same people doesn't matter.
+ */
+function getRecordResultKey(snapshot: SnapshotValue): string {
+    if (snapshot.valueParts.length > 0) {
+        return JSON.stringify(normalizeParts(snapshot.valueParts));
+    }
+
+    return snapshot.value.trim();
 }
 
 function parseSnapshotValue(fingerprint: string): SnapshotValue | null {
@@ -186,6 +193,9 @@ function parseSnapshotValue(fingerprint: string): SnapshotValue | null {
 
         return {
             title: parsed.title,
+            titleParts: Array.isArray(parsed.titleParts)
+                ? parsed.titleParts
+                : [],
             value: parsed.value,
             description: parsed.description ?? "",
             href: parsed.href ?? "",
@@ -198,6 +208,20 @@ function parseSnapshotValue(fingerprint: string): SnapshotValue | null {
         return null;
     }
 }
+
+export type HighlightUpdate = {
+    id: string;
+    title: string;
+    detectedAt: string;
+    previous: SnapshotValue;
+    current: SnapshotValue;
+};
+
+type FeaturedCandidate = {
+    record: HighlightRecord;
+    sectionId: string;
+    colonistIds: Set<number>;
+};
 
 function getCurrentHighlightSnapshot(
     sections: HighlightSectionData[],
@@ -268,6 +292,15 @@ async function trackHighlightUpdates(
             const currentValue = parseSnapshotValue(fingerprint);
 
             if (!oldValue || !record || !currentValue) continue;
+
+            // Ignore changes to formatting, descriptions, links, and ordering
+            // when the actual record result is unchanged.
+            if (
+                getRecordResultKey(oldValue) ===
+                getRecordResultKey(currentValue)
+            ) {
+                continue;
+            }
 
             newUpdates.push({
                 id,

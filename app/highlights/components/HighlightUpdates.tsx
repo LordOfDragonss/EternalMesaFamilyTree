@@ -22,6 +22,43 @@ type Props = {
     updates: HighlightUpdate[];
 };
 
+function UpdateTitle({
+    title,
+    titleParts,
+}: {
+    title: string;
+    titleParts?: HighlightValuePart[];
+}) {
+    if (!titleParts || titleParts.length === 0) {
+        return <Text fw={700}>{title}</Text>;
+    }
+
+    return (
+        <Group gap={0} wrap="wrap">
+            {titleParts.map((part, index) =>
+                part.href ? (
+                    <Anchor
+                        key={`${part.label}-${index}`}
+                        href={part.href}
+                        c={part.color ?? undefined}
+                        fw={700}
+                    >
+                        {part.label}
+                    </Anchor>
+                ) : (
+                    <Text
+                        key={`${part.label}-${index}`}
+                        component="span"
+                        fw={700}
+                        c={part.color ?? undefined}
+                    >
+                        {part.label}
+                    </Text>
+                ),
+            )}
+        </Group>
+    );
+}
 function UpdateValue({
     value,
     href,
@@ -129,9 +166,10 @@ export default function HighlightUpdates({ updates }: Props) {
                                             gap="sm"
                                             wrap="wrap"
                                         >
-                                            <Text fw={700}>
-                                                {update.title}
-                                            </Text>
+                                            <UpdateTitle
+                                                title={update.title}
+                                                titleParts={update.current.titleParts}
+                                            />
 
                                             <Text size="xs" c="dimmed">
                                                 {new Date(

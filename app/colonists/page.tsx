@@ -7,7 +7,7 @@ import {
     Title,
     Tooltip,
 } from "@mantine/core";
-import { Pencil, Plus, HeartHandshake } from "lucide-react";
+import { Pencil, Plus, HeartHandshake, Mars, Venus } from "lucide-react";
 
 import { prisma } from "@/lib/prisma";
 import DeleteButton from "@/app/components/DeleteButton";
@@ -464,6 +464,36 @@ export default async function ColonistsPage({
                             } as React.CSSProperties}
                             className="colonist-card"
                         >
+                            {/* Gender */}
+                            <Tooltip label={colonist.gender === "Male" ? "Male" : "Female"}>
+                                <span
+                                    style={{
+                                        position: "absolute",
+                                        top: 12,
+                                        right: 12,
+                                        zIndex: 2,
+                                        width: 28,
+                                        height: 28,
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        borderRadius: "50%",
+                                        backgroundColor: "#161616",
+                                        border: `2px solid ${colonist.gender === "Male"
+                                                ? "#6CA6FF"
+                                                : "#E6A0D0"
+                                            }`,
+                                        boxSizing: "border-box",
+                                    }}
+                                >
+                                    {colonist.gender === "Male" ? (
+                                        <Mars size={16} color="#6CA6FF" strokeWidth={2.5} />
+                                    ) : (
+                                        <Venus size={16} color="#E6A0D0" strokeWidth={2.5} />
+                                    )}
+                                </span>
+                            </Tooltip>
+
                             <a
                                 href={`/colonists/${colonist.id}`}
                                 className="colonist-card-link"

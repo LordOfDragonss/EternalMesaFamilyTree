@@ -40,6 +40,9 @@ import {
     PencilLine,
     Plus,
     Eye,
+    FileText,
+    Download,
+    Paperclip,
     Heading1,
     Heading2,
     Heading3,
@@ -47,9 +50,9 @@ import {
     Italic,
     ImagePlus,
     Link as LinkIcon,
+    MessageSquare,
     List,
     ListOrdered,
-    MessageSquare,
     Quote,
     Redo2,
     Save,
@@ -97,6 +100,191 @@ type ArchiveRecord = {
     color?: string;
     subtitle?: string;
 };
+
+type StoryDateEndpoint = {
+    day: string;
+    month: string;
+    year: string;
+    approximate: boolean;
+};
+
+const storyDateMonths = [
+    "Aprimay",
+    "Jugust",
+    "Septober",
+    "Decembary",
+];
+
+function formatStoryDate(date: StoryDateEndpoint): string {
+    const day = date.day.trim();
+    const month = date.month.trim();
+    const year = date.year.trim();
+
+    const parts = [
+        ...(day && month ? [day] : []),
+        ...(month ? [month] : []),
+        ...(year ? [year] : []),
+    ];
+
+    const formattedDate = parts.join(" ");
+
+    if (!formattedDate) return "Date unknown";
+
+    return date.approximate
+        ? `circa ${formattedDate}`
+        : formattedDate;
+}
+
+function StoryDateFields({
+    label,
+    value,
+    onChange,
+}: {
+    label: string;
+    value: StoryDateEndpoint;
+    onChange: (date: StoryDateEndpoint) => void;
+}) {
+    return (
+        <Stack gap="xs">
+            <Text size="sm" c="dimmed">
+                {label}
+            </Text>
+
+            <Group grow align="flex-start">
+                <NativeSelect
+                    label="Day"
+                    value={value.day}
+                    disabled={!value.month}
+                    onChange={(event) =>
+                        onChange({
+                            ...value,
+                            day: event.currentTarget.value,
+                        })
+                    }
+                    data={[
+                        { value: "", label: "Not set" },
+                        ...Array.from({ length: 15 }, (_, index) => {
+                            const day = String(index + 1);
+                            return { value: day, label: day };
+                        }),
+                    ]}
+                />
+
+                <NativeSelect
+                    label="Month"
+                    value={value.month}
+                    onChange={(event) => {
+                        const month = event.currentTarget.value;
+                        onChange({
+                            ...value,
+                            month,
+                            day: month ? value.day : "",
+                        });
+                    }}
+                    data={[
+                        { value: "", label: "Not set" },
+                        ...storyDateMonths.map((month) => ({
+                            value: month,
+                            label: month,
+                        })),
+                    ]}
+                />
+
+                <TextInput
+                    label="Year"
+                    value={value.year}
+                    onChange={(event) =>
+                        onChange({
+                            ...value,
+                            year: event.currentTarget.value,
+                        })
+                    }
+                    inputMode="numeric"
+                />
+            </Group>
+
+            <Select
+                label="Certainty"
+                data={[
+                    { value: "exact", label: "Exact" },
+                    { value: "approximate", label: "Approximate" },
+                ]}
+                value={value.approximate ? "approximate" : "exact"}
+                onChange={(next) => {
+                    if (next === "exact" || next === "approximate") {
+                        onChange({
+                            ...value,
+                            approximate: next === "approximate",
+                        });
+                    }
+                }}
+                allowDeselect={false}
+            />
+        </Stack>
+    );
+}
+
+type ReferenceKind = "Screenshot" | "Text reference" | "File attachment" | "Other";
+
+type ReferenceMaterial = {
+    id: string;
+    kind: ReferenceKind;
+    title: string;
+    source: string;
+    content: string;
+    contextNote: string;
+    imageUrl?: string;
+    attachmentUrl?: string;
+    attachmentName?: string;
+    attachmentType?: string;
+    attachmentSize?: number;
+};
+
+function formatFileSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+const initialReferenceLibrary: ReferenceMaterial[] = [
+    {
+        id: "founding-screenshot",
+        kind: "Screenshot",
+        title: "Early Predatus settlement",
+        source: "Predatus_5506-03-03.png",
+        content: "Screenshot of the settlement shortly after its founding.",
+        contextNote:
+            "Use this to reconstruct the initial settlement layout before the colony expanded.",
+    },
+    {
+        id: "founding-message",
+        kind: "Text reference",
+        title: "Founding entry in colony notes",
+        source: "Old colony notes · founding entry",
+        content:
+            "Anna Mesa and Merulo Jay are recorded as the first settlers of Predatus.",
+        contextNote:
+            "A written clue for the founders section; compare it with other records before treating every detail as certain.",
+    },
+    {
+        id: "maia-surgery-screenshot",
+        kind: "Screenshot",
+        title: "Maia's surgery aftermath",
+        source: "Maia_surgery_5501.png",
+        content: "Screenshot associated with Maia's kidney surgery.",
+        contextNote:
+            "This source may also be useful for a separate story about Maia's personal history.",
+    },
+    {
+        id: "lab-fire-message",
+        kind: "Text reference",
+        title: "Laboratory fire recollection",
+        source: "Old colony message · event notes",
+        content: "A note mentioning the laboratory fire while insects were inside.",
+        contextNote:
+            "Potential source for a future story about the lab fire and Vesper Locust.",
+    },
+];
 
 const legacyColorPresets = [
     { label: "Mesa", value: "#A95728" },
@@ -580,12 +768,18 @@ export default function StoryEditorPrototype() {
     const [textColor, setTextColor] = useState("#d6d6d6");
 
     const [dateType, setDateType] = useState("single");
-    const [startDay, setStartDay] = useState("3");
-    const [startMonth, setStartMonth] = useState("Jugust");
-    const [startYear, setStartYear] = useState("5506");
-    const [endDay, setEndDay] = useState("3");
-    const [endMonth, setEndMonth] = useState("Jugust");
-    const [endYear, setEndYear] = useState("5506");
+    const [startDate, setStartDate] = useState<StoryDateEndpoint>({
+        day: "3",
+        month: "Jugust",
+        year: "5506",
+        approximate: false,
+    });
+    const [endDate, setEndDate] = useState<StoryDateEndpoint>({
+        day: "3",
+        month: "Jugust",
+        year: "5506",
+        approximate: false,
+    });
 
     const [archiveModalOpen, setArchiveModalOpen] = useState(false);
     const [archiveCategory, setArchiveCategory] =
@@ -636,6 +830,28 @@ export default function StoryEditorPrototype() {
 
     const [editorialNotes, setEditorialNotes] = useState("");
     const [editorialNotesCollapsed, setEditorialNotesCollapsed] = useState(true);
+
+    const [referenceLibrary, setReferenceLibrary] = useState<ReferenceMaterial[]>(
+        initialReferenceLibrary,
+    );
+    const [storyReferenceIds, setStoryReferenceIds] = useState<string[]>([
+        "founding-screenshot",
+        "founding-message",
+    ]);
+    const [referenceSectionCollapsed, setReferenceSectionCollapsed] =
+        useState(false);
+    const [referenceToAdd, setReferenceToAdd] = useState<string | null>(null);
+    const [referenceModalOpen, setReferenceModalOpen] = useState(false);
+    const [referenceKind, setReferenceKind] = useState<ReferenceKind>("Screenshot");
+    const [referenceTitle, setReferenceTitle] = useState("");
+    const [referenceSource, setReferenceSource] = useState("");
+    const [referenceContent, setReferenceContent] = useState("");
+    const [referenceContextNote, setReferenceContextNote] = useState("");
+    const [referenceImageUrl, setReferenceImageUrl] = useState("");
+    const [referenceFileUrl, setReferenceFileUrl] = useState("");
+    const [referenceFileName, setReferenceFileName] = useState("");
+    const [referenceFileType, setReferenceFileType] = useState("");
+    const [referenceFileSize, setReferenceFileSize] = useState(0);
 
     const editor = useEditor({
         extensions: [
@@ -742,22 +958,14 @@ export default function StoryEditorPrototype() {
     const dateDescription = useMemo(() => {
         if (dateType === "unknown") return "Date unknown";
 
-        const start = `${startDay} ${startMonth} ${startYear}`;
+        const start = formatStoryDate(startDate);
 
         if (dateType === "range") {
-            return `${start} – ${endDay} ${endMonth} ${endYear}`;
+            return `${start} – ${formatStoryDate(endDate)}`;
         }
 
         return start;
-    }, [
-        dateType,
-        startDay,
-        startMonth,
-        startYear,
-        endDay,
-        endMonth,
-        endYear,
-    ]);
+    }, [dateType, startDate, endDate]);
 
     const relatedRecords = useMemo(() => {
         const associatedIds = new Set([
@@ -788,6 +996,22 @@ export default function StoryEditorPrototype() {
                     label: `${record.title} · ${record.category}`,
                 })),
         [],
+    );
+
+    const attachedReferences = useMemo(
+        () => referenceLibrary.filter((reference) => storyReferenceIds.includes(reference.id)),
+        [referenceLibrary, storyReferenceIds],
+    );
+
+    const availableReferenceOptions = useMemo(
+        () =>
+            referenceLibrary
+                .filter((reference) => !storyReferenceIds.includes(reference.id))
+                .map((reference) => ({
+                    value: reference.id,
+                    label: `${reference.title} · ${reference.kind}`,
+                })),
+        [referenceLibrary, storyReferenceIds],
     );
 
     if (!editor) {
@@ -1152,6 +1376,90 @@ export default function StoryEditorPrototype() {
         setCreatingCollection(false);
     }
 
+    function resetReferenceForm() {
+        if (referenceImageUrl.startsWith("blob:")) {
+            URL.revokeObjectURL(referenceImageUrl);
+        }
+        if (referenceFileUrl.startsWith("blob:")) {
+            URL.revokeObjectURL(referenceFileUrl);
+        }
+        setReferenceKind("Screenshot");
+        setReferenceTitle("");
+        setReferenceSource("");
+        setReferenceContent("");
+        setReferenceContextNote("");
+        setReferenceImageUrl("");
+        setReferenceFileUrl("");
+        setReferenceFileName("");
+        setReferenceFileType("");
+        setReferenceFileSize(0);
+    }
+
+    function closeReferenceModal() {
+        setReferenceModalOpen(false);
+        resetReferenceForm();
+    }
+
+    function changeReferenceKind(nextKind: ReferenceKind) {
+        if (referenceKind === "Screenshot" && nextKind !== "Screenshot") {
+            if (referenceImageUrl.startsWith("blob:")) {
+                URL.revokeObjectURL(referenceImageUrl);
+            }
+            setReferenceImageUrl("");
+        }
+        if (referenceKind === "File attachment" && nextKind !== "File attachment") {
+            if (referenceFileUrl.startsWith("blob:")) {
+                URL.revokeObjectURL(referenceFileUrl);
+            }
+            setReferenceFileUrl("");
+            setReferenceFileName("");
+            setReferenceFileType("");
+            setReferenceFileSize(0);
+        }
+        setReferenceKind(nextKind);
+    }
+
+    function createReferenceMaterial() {
+        const nextTitle = referenceTitle.trim();
+        if (!nextTitle) return;
+
+        const reference: ReferenceMaterial = {
+            id: crypto.randomUUID(),
+            kind: referenceKind,
+            title: nextTitle,
+            source: referenceSource.trim(),
+            content: referenceContent.trim(),
+            contextNote: referenceContextNote.trim(),
+            ...(referenceKind === "Screenshot" && referenceImageUrl
+                ? { imageUrl: referenceImageUrl }
+                : {}),
+            ...(referenceKind === "File attachment" && referenceFileUrl
+                ? {
+                    attachmentUrl: referenceFileUrl,
+                    attachmentName: referenceFileName,
+                    attachmentType: referenceFileType,
+                    attachmentSize: referenceFileSize,
+                }
+                : {}),
+        };
+
+        setReferenceLibrary((current) => [reference, ...current]);
+        setStoryReferenceIds((current) => [reference.id, ...current]);
+        setReferenceModalOpen(false);
+
+        // Any selected object URL now belongs to the new library item for this prototype session.
+        setReferenceKind("Screenshot");
+        setReferenceTitle("");
+        setReferenceSource("");
+        setReferenceContent("");
+        setReferenceContextNote("");
+        setReferenceImageUrl("");
+        setReferenceFileUrl("");
+        setReferenceFileName("");
+        setReferenceFileType("");
+        setReferenceFileSize(0);
+    }
+
     function handleSavePlaceholder() {
         setSaveMessage(
             "Saving isn't connected yet. Your changes have not been saved to the database.",
@@ -1442,7 +1750,7 @@ export default function StoryEditorPrototype() {
 
                         <Divider my="md" />
 
-                        <Stack gap="xs">
+                        <Stack gap="md">
                             <Text fw={500} size="sm">
                                 Story date
                             </Text>
@@ -1457,110 +1765,26 @@ export default function StoryEditorPrototype() {
                                     { label: "Unknown", value: "unknown" },
                                 ]}
                                 styles={{
-                                    root: {
-                                        backgroundColor: "#24201d",
-                                    },
-                                    indicator: {
-                                        backgroundColor: "#A95728",
-                                    },
-                                    label: {
-                                        color: "#d6d6d6",
-                                    },
+                                    root: { backgroundColor: "#24201d" },
+                                    indicator: { backgroundColor: "#A95728" },
+                                    label: { color: "#d6d6d6" },
                                 }}
                             />
 
                             {dateType !== "unknown" && (
-                                <Stack gap="xs">
-                                    <Text size="sm" c="dimmed">
-                                        {dateType === "range" ? "Start date" : "Date"}
-                                    </Text>
-
-                                    <Group grow>
-                                        <NativeSelect
-                                            aria-label="Start day"
-                                            value={startDay}
-                                            onChange={(event) =>
-                                                setStartDay(event.currentTarget.value)
-                                            }
-                                            data={Array.from(
-                                                { length: 15 },
-                                                (_, index) => {
-                                                    const day = String(index + 1);
-                                                    return { value: day, label: day };
-                                                },
-                                            )}
-                                        />
-
-                                        <NativeSelect
-                                            aria-label="Start month"
-                                            value={startMonth}
-                                            onChange={(event) =>
-                                                setStartMonth(event.currentTarget.value)
-                                            }
-                                            data={[
-                                                "Aprimay",
-                                                "Jugust",
-                                                "Septober",
-                                                "Decembary",
-                                            ]}
-                                        />
-
-                                        <TextInput
-                                            aria-label="Start year"
-                                            value={startYear}
-                                            onChange={(event) =>
-                                                setStartYear(event.currentTarget.value)
-                                            }
-                                            inputMode="numeric"
-                                        />
-                                    </Group>
+                                <Stack gap="md">
+                                    <StoryDateFields
+                                        label={dateType === "range" ? "Start date" : "Date"}
+                                        value={startDate}
+                                        onChange={setStartDate}
+                                    />
 
                                     {dateType === "range" && (
-                                        <>
-                                            <Text size="sm" c="dimmed">
-                                                End date
-                                            </Text>
-
-                                            <Group grow>
-                                                <NativeSelect
-                                                    aria-label="End day"
-                                                    value={endDay}
-                                                    onChange={(event) =>
-                                                        setEndDay(event.currentTarget.value)
-                                                    }
-                                                    data={Array.from(
-                                                        { length: 15 },
-                                                        (_, index) => {
-                                                            const day = String(index + 1);
-                                                            return { value: day, label: day };
-                                                        },
-                                                    )}
-                                                />
-
-                                                <NativeSelect
-                                                    aria-label="End month"
-                                                    value={endMonth}
-                                                    onChange={(event) =>
-                                                        setEndMonth(event.currentTarget.value)
-                                                    }
-                                                    data={[
-                                                        "Aprimay",
-                                                        "Jugust",
-                                                        "Septober",
-                                                        "Decembary",
-                                                    ]}
-                                                />
-
-                                                <TextInput
-                                                    aria-label="End year"
-                                                    value={endYear}
-                                                    onChange={(event) =>
-                                                        setEndYear(event.currentTarget.value)
-                                                    }
-                                                    inputMode="numeric"
-                                                />
-                                            </Group>
-                                        </>
+                                        <StoryDateFields
+                                            label="End date"
+                                            value={endDate}
+                                            onChange={setEndDate}
+                                        />
                                     )}
                                 </Stack>
                             )}
@@ -2312,6 +2536,281 @@ export default function StoryEditorPrototype() {
                     bg="#161616"
                     style={{ borderColor: "#292929" }}
                 >
+                    <Stack gap="md">
+                        <Group justify="space-between" align="flex-start">
+                            <Stack gap={3} style={{ minWidth: 0, flex: 1 }}>
+                                <Group gap="xs" align="center">
+                                    <Text fw={600}>Reference material</Text>
+                                    <Badge variant="light" color="gray">
+                                        {attachedReferences.length} attached
+                                    </Badge>
+                                </Group>
+                                <Text size="sm" c="dimmed">
+                                    Reusable sources and clues used to reconstruct this story.
+                                    Removing an item here only detaches it from this story;
+                                    it remains in the prototype reference library.
+                                </Text>
+                            </Stack>
+
+                            <Button
+                                variant="subtle"
+                                color="gray"
+                                size="compact-sm"
+                                rightSection={
+                                    referenceSectionCollapsed
+                                        ? <ChevronDown size={16} />
+                                        : <ChevronUp size={16} />
+                                }
+                                onClick={() =>
+                                    setReferenceSectionCollapsed((collapsed) => !collapsed)
+                                }
+                                aria-expanded={!referenceSectionCollapsed}
+                            >
+                                {referenceSectionCollapsed ? "Show references" : "Hide references"}
+                            </Button>
+                        </Group>
+
+                        <Collapse expanded={!referenceSectionCollapsed}>
+                            <Stack gap="md">
+                                <Group align="flex-end" gap="sm" wrap="nowrap">
+                                    <Select
+                                        label="Attach an existing reference"
+                                        placeholder={
+                                            availableReferenceOptions.length > 0
+                                                ? "Search the reference library..."
+                                                : "All references are attached"
+                                        }
+                                        data={availableReferenceOptions}
+                                        value={referenceToAdd}
+                                        onChange={(value) => {
+                                            if (value) {
+                                                setStoryReferenceIds((current) =>
+                                                    current.includes(value)
+                                                        ? current
+                                                        : [...current, value],
+                                                );
+                                            }
+                                            setReferenceToAdd(null);
+                                        }}
+                                        searchable
+                                        clearable
+                                        disabled={availableReferenceOptions.length === 0}
+                                        style={{ flex: 1, minWidth: 0 }}
+                                    />
+
+                                    <Button
+                                        type="button"
+                                        color="mesa"
+                                        variant="light"
+                                        leftSection={<Plus size={16} />}
+                                        onClick={() => setReferenceModalOpen(true)}
+                                        style={{ flexShrink: 0, whiteSpace: "nowrap" }}
+                                    >
+                                        New reference
+                                    </Button>
+                                </Group>
+
+                                {attachedReferences.length > 0 ? (
+                                    <Stack gap="sm">
+                                        {attachedReferences.map((reference) => (
+                                            <Card
+                                                key={reference.id}
+                                                withBorder
+                                                padding="sm"
+                                                radius="md"
+                                                bg="#121212"
+                                                style={{ borderColor: "#292929" }}
+                                            >
+                                                <Stack gap="sm">
+                                                    <Group justify="space-between" align="flex-start" wrap="nowrap">
+                                                        <Group gap="sm" align="flex-start" wrap="nowrap" style={{ minWidth: 0 }}>
+                                                            <div
+                                                                style={{
+                                                                    width: 36,
+                                                                    height: 36,
+                                                                    flex: "0 0 36px",
+                                                                    borderRadius: 8,
+                                                                    display: "flex",
+                                                                    alignItems: "center",
+                                                                    justifyContent: "center",
+                                                                    background: "#202020",
+                                                                    color: "#b8b8b8",
+                                                                }}
+                                                            >
+                                                                {reference.kind === "Screenshot" ? (
+                                                                    <ImagePlus size={18} />
+                                                                ) : reference.kind === "File attachment" ? (
+                                                                    <Paperclip size={18} />
+                                                                ) : (
+                                                                    <FileText size={18} />
+                                                                )}
+                                                            </div>
+
+                                                            <Stack gap={3} style={{ minWidth: 0 }}>
+                                                                <Group gap="xs" align="center" wrap="wrap">
+                                                                    <Text fw={600} size="sm" style={{ overflowWrap: "anywhere" }}>
+                                                                        {reference.title}
+                                                                    </Text>
+                                                                    <Badge variant="outline" color="gray">
+                                                                        {reference.kind}
+                                                                    </Badge>
+                                                                </Group>
+                                                                {reference.source && (
+                                                                    <Text size="xs" c="dimmed" style={{ overflowWrap: "anywhere" }}>
+                                                                        Source: {reference.source}
+                                                                    </Text>
+                                                                )}
+                                                            </Stack>
+                                                        </Group>
+
+                                                        <Tooltip label="Remove from this story" withArrow>
+                                                            <ActionIcon
+                                                                type="button"
+                                                                variant="subtle"
+                                                                color="gray"
+                                                                aria-label={`Remove ${reference.title} from this story`}
+                                                                onClick={() =>
+                                                                    setStoryReferenceIds((current) =>
+                                                                        current.filter((id) => id !== reference.id),
+                                                                    )
+                                                                }
+                                                            >
+                                                                <X size={16} />
+                                                            </ActionIcon>
+                                                        </Tooltip>
+                                                    </Group>
+
+                                                    {reference.imageUrl ? (
+                                                        <img
+                                                            src={reference.imageUrl}
+                                                            alt={reference.title}
+                                                            style={{
+                                                                display: "block",
+                                                                maxWidth: "100%",
+                                                                maxHeight: 260,
+                                                                objectFit: "contain",
+                                                                objectPosition: "left center",
+                                                                borderRadius: 6,
+                                                                background: "#0d0d0d",
+                                                            }}
+                                                        />
+                                                    ) : reference.kind === "Screenshot" ? (
+                                                        <Group
+                                                            gap="xs"
+                                                            p="sm"
+                                                            wrap="nowrap"
+                                                            style={{
+                                                                background: "#0d0d0d",
+                                                                border: "1px dashed #333",
+                                                                borderRadius: 6,
+                                                            }}
+                                                        >
+                                                            <ImagePlus size={16} color="#888" />
+                                                            <Text size="xs" c="dimmed">
+                                                                Screenshot reference · {reference.source || "No filename recorded"}
+                                                            </Text>
+                                                        </Group>
+                                                    ) : null}
+
+                                                    {reference.kind === "File attachment" && (
+                                                        <Group
+                                                            gap="sm"
+                                                            align="center"
+                                                            justify="space-between"
+                                                            wrap="wrap"
+                                                            p="sm"
+                                                            style={{
+                                                                background: "#0d0d0d",
+                                                                border: "1px solid #292929",
+                                                                borderRadius: 6,
+                                                            }}
+                                                        >
+                                                            <Group gap="sm" align="center" wrap="nowrap" style={{ minWidth: 0 }}>
+                                                                <Paperclip size={18} color="#a0a0a0" />
+                                                                <Stack gap={2} style={{ minWidth: 0 }}>
+                                                                    <Text size="sm" fw={500} style={{ overflowWrap: "anywhere" }}>
+                                                                        {reference.attachmentName || "No file attached"}
+                                                                    </Text>
+                                                                    {(reference.attachmentType || reference.attachmentSize !== undefined) && (
+                                                                        <Text size="xs" c="dimmed">
+                                                                            {reference.attachmentType || "File"}
+                                                                            {reference.attachmentSize !== undefined
+                                                                                ? ` · ${formatFileSize(reference.attachmentSize)}`
+                                                                                : ""}
+                                                                        </Text>
+                                                                    )}
+                                                                </Stack>
+                                                            </Group>
+                                                            {reference.attachmentUrl && reference.attachmentName ? (
+                                                                <Button
+                                                                    component="a"
+                                                                    href={reference.attachmentUrl}
+                                                                    download={reference.attachmentName}
+                                                                    variant="light"
+                                                                    color="gray"
+                                                                    size="xs"
+                                                                    leftSection={<Download size={14} />}
+                                                                >
+                                                                    Download
+                                                                </Button>
+                                                            ) : (
+                                                                <Text size="xs" c="dimmed">
+                                                                    No prototype file attached
+                                                                </Text>
+                                                            )}
+                                                        </Group>
+                                                    )}
+
+                                                    {reference.content && (
+                                                        <Stack gap={3}>
+                                                            <Text size="xs" fw={600} c="dimmed">
+                                                                {reference.kind === "Screenshot"
+                                                                    ? "Caption / description"
+                                                                    : reference.kind === "File attachment"
+                                                                        ? "File description"
+                                                                        : reference.kind === "Other"
+                                                                            ? "Details"
+                                                                            : "Source excerpt / details"}
+                                                            </Text>
+                                                            <Text size="sm" style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+                                                                {reference.content}
+                                                            </Text>
+                                                        </Stack>
+                                                    )}
+
+                                                    {reference.contextNote && (
+                                                        <Stack gap={3}>
+                                                            <Text size="xs" fw={600} c="dimmed">
+                                                                Why it's relevant
+                                                            </Text>
+                                                            <Text size="sm" c="dimmed" style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+                                                                {reference.contextNote}
+                                                            </Text>
+                                                        </Stack>
+                                                    )}
+                                                </Stack>
+                                            </Card>
+                                        ))}
+                                    </Stack>
+                                ) : (
+                                    <Text size="sm" c="dimmed">
+                                        No references attached yet. Add an existing item from the library or create a new reference.
+                                    </Text>
+                                )}
+                            </Stack>
+                        </Collapse>
+                    </Stack>
+                </Card>
+            )}
+
+            {viewMode === "edit" && (
+                <Card
+                    withBorder
+                    padding="md"
+                    radius="md"
+                    bg="#161616"
+                    style={{ borderColor: "#292929" }}
+                >
                     <Group justify="space-between" align="center">
                         <Stack gap={2}>
                             <Text fw={600}>Private editorial notes</Text>
@@ -2383,6 +2882,237 @@ export default function StoryEditorPrototype() {
                     </Button>
                 </Group>
             </div>
+            <Modal
+                opened={referenceModalOpen}
+                onClose={closeReferenceModal}
+                title="Create a reference"
+                centered
+                size="lg"
+            >
+                <Stack gap="md">
+                    <Text size="sm" c="dimmed">
+                        Create a reusable source in the prototype library and attach it to this story.
+                        The source material and your contextual note are kept separate.
+                    </Text>
+
+                    <Select
+                        label="Reference format"
+                        data={[
+                            { value: "Screenshot", label: "Screenshot / image" },
+                            { value: "Text reference", label: "Text / written reference" },
+                            { value: "File attachment", label: "File attachment" },
+                            { value: "Other", label: "Other" },
+                        ]}
+                        value={referenceKind}
+                        onChange={(value) => {
+                            if (
+                                value === "Screenshot" ||
+                                value === "Text reference" ||
+                                value === "File attachment" ||
+                                value === "Other"
+                            ) {
+                                changeReferenceKind(value);
+                            }
+                        }}
+                        allowDeselect={false}
+                    />
+
+                    <TextInput
+                        label="Title"
+                        placeholder={
+                            referenceKind === "Screenshot"
+                                ? "e.g. Predatus shortly after founding"
+                                : referenceKind === "Text reference"
+                                    ? "e.g. Founding entry in colony notes"
+                                    : referenceKind === "File attachment"
+                                        ? "e.g. Original colony save"
+                                        : "Give this reference a useful title"
+                        }
+                        value={referenceTitle}
+                        onChange={(event) => setReferenceTitle(event.currentTarget.value)}
+                        required
+                        autoFocus
+                    />
+
+                    <TextInput
+                        label="Source / identifier (optional)"
+                        placeholder={
+                            referenceKind === "Screenshot"
+                                ? "Where the screenshot came from"
+                                : referenceKind === "Text reference"
+                                    ? "Where this reference came from"
+                                    : referenceKind === "File attachment"
+                                        ? "Optional source or original location of the file"
+                                        : "Any useful source or identifying details"
+                        }
+                        value={referenceSource}
+                        onChange={(event) => setReferenceSource(event.currentTarget.value)}
+                    />
+
+                    {referenceKind === "Screenshot" && (
+                        <Stack gap="xs">
+                            <Text size="sm" fw={500}>Screenshot file (optional)</Text>
+                            <input
+                                type="file"
+                                accept="image/*"
+                                aria-label="Choose a screenshot file"
+                                onChange={(event) => {
+                                    const file = event.currentTarget.files?.[0];
+                                    if (!file) return;
+                                    if (referenceImageUrl.startsWith("blob:")) {
+                                        URL.revokeObjectURL(referenceImageUrl);
+                                    }
+                                    setReferenceImageUrl(URL.createObjectURL(file));
+                                    setReferenceSource((current) => current.trim() ? current : file.name);
+                                    event.currentTarget.value = "";
+                                }}
+                                style={{
+                                    width: "100%",
+                                    padding: "10px",
+                                    border: "1px solid #393939",
+                                    borderRadius: 6,
+                                    background: "#191919",
+                                    color: "#d6d6d6",
+                                }}
+                            />
+                            {referenceImageUrl && (
+                                <Card
+                                    withBorder
+                                    padding="sm"
+                                    radius="md"
+                                    bg="#111"
+                                    style={{ borderColor: "#292929" }}
+                                >
+                                    <Text size="xs" c="dimmed" mb="xs">Image preview</Text>
+                                    <img
+                                        src={referenceImageUrl}
+                                        alt={referenceTitle || "Reference screenshot preview"}
+                                        style={{
+                                            display: "block",
+                                            maxWidth: "100%",
+                                            maxHeight: 220,
+                                            objectFit: "contain",
+                                            margin: "0 auto",
+                                            borderRadius: 6,
+                                        }}
+                                    />
+                                </Card>
+                            )}
+                            <Text size="xs" c="dimmed">
+                                The local image is only kept in this prototype session; it is not uploaded or saved to the database.
+                            </Text>
+                        </Stack>
+                    )}
+
+                    {referenceKind === "File attachment" && (
+                        <Stack gap="xs">
+                            <Text size="sm" fw={500}>Choose a file (optional)</Text>
+                            <input
+                                type="file"
+                                aria-label="Choose a reference file"
+                                onChange={(event) => {
+                                    const file = event.currentTarget.files?.[0];
+                                    if (!file) return;
+                                    if (referenceFileUrl.startsWith("blob:")) {
+                                        URL.revokeObjectURL(referenceFileUrl);
+                                    }
+                                    setReferenceFileUrl(URL.createObjectURL(file));
+                                    setReferenceFileName(file.name);
+                                    setReferenceFileType(file.type || "Unknown file type");
+                                    setReferenceFileSize(file.size);
+                                    event.currentTarget.value = "";
+                                }}
+                                style={{
+                                    width: "100%",
+                                    padding: "10px",
+                                    border: "1px solid #393939",
+                                    borderRadius: 6,
+                                    background: "#191919",
+                                    color: "#d6d6d6",
+                                }}
+                            />
+                            {referenceFileName && (
+                                <Card
+                                    withBorder
+                                    padding="sm"
+                                    radius="md"
+                                    bg="#111"
+                                    style={{ borderColor: "#292929" }}
+                                >
+                                    <Group gap="sm" align="center" wrap="nowrap">
+                                        <Paperclip size={18} color="#a0a0a0" />
+                                        <Stack gap={2} style={{ minWidth: 0 }}>
+                                            <Text size="sm" fw={500} style={{ overflowWrap: "anywhere" }}>
+                                                {referenceFileName}
+                                            </Text>
+                                            <Text size="xs" c="dimmed">
+                                                {referenceFileType || "File"} · {formatFileSize(referenceFileSize)}
+                                            </Text>
+                                        </Stack>
+                                    </Group>
+                                </Card>
+                            )}
+                            <Text size="xs" c="dimmed">
+                                Any file type can be selected, including .docx, .txt and .rws. In this prototype it is kept locally for download until the page is refreshed; it is not uploaded to MinIO or saved to the database.
+                            </Text>
+                        </Stack>
+                    )}
+
+                    <Textarea
+                        label={
+                            referenceKind === "Screenshot"
+                                ? "Caption / description"
+                                : referenceKind === "Text reference"
+                                    ? "Source excerpt / details"
+                                    : referenceKind === "File attachment"
+                                        ? "File description (optional)"
+                                        : "Details (optional)"
+                        }
+                        placeholder={
+                            referenceKind === "Screenshot"
+                                ? "What does the screenshot show?"
+                                : referenceKind === "Text reference"
+                                    ? "Paste a relevant excerpt, record an identifying detail, or describe the source..."
+                                    : referenceKind === "File attachment"
+                                        ? "What is this file, and which part of it is relevant?"
+                                        : "Describe this reference and why you are keeping it..."
+                        }
+                        value={referenceContent}
+                        onChange={(event) => setReferenceContent(event.currentTarget.value)}
+                        minRows={3}
+                        autosize
+                    />
+
+                    <Textarea
+                        label="Why it's relevant (optional)"
+                        description="Your interpretation or a reminder of how this source helps reconstruct the story."
+                        placeholder="What does this help establish, and what still needs checking?"
+                        value={referenceContextNote}
+                        onChange={(event) => setReferenceContextNote(event.currentTarget.value)}
+                        minRows={2}
+                        autosize
+                    />
+
+                    <Group justify="flex-end">
+                        <Button
+                            variant="subtle"
+                            color="gray"
+                            onClick={closeReferenceModal}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            color="mesa"
+                            leftSection={<Plus size={16} />}
+                            onClick={createReferenceMaterial}
+                            disabled={!referenceTitle.trim()}
+                        >
+                            Create and attach
+                        </Button>
+                    </Group>
+                </Stack>
+            </Modal>
+
             <Modal
                 opened={commentModalOpen}
                 onClose={() => setCommentModalOpen(false)}

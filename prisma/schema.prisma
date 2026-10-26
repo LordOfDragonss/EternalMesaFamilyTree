@@ -33,6 +33,40 @@ enum Passion {
   Critical
 }
 
+enum LocationType {
+  PLAYABLE_MAP
+  OUTPOST
+  OTHER
+}
+
+enum RelicCategory {
+  IDEOLOGY
+  WEAPON
+  PERSONAL
+  LEGACY
+  STORY
+  SYMBOLIC
+  OTHER
+}
+
+enum StoryStatus {
+  DRAFT
+  COMPLETE
+}
+
+enum StoryDateType {
+  SINGLE
+  RANGE
+  UNKNOWN
+}
+
+enum ReferenceMaterialType {
+  IMAGE
+  TEXT
+  FILE
+  OTHER
+}
+
 model Colonist {
   id        Int     @id @default(autoincrement())
   firstName String
@@ -82,6 +116,8 @@ model Colonist {
 
   ownedRelics     Relic[]          @relation("CurrentRelicOwner")
   relicOwnerships RelicOwnership[]
+
+  storyAssociations StoryColonist[]
 }
 
 model ColonistImage {
@@ -117,6 +153,8 @@ model Legacy {
   updatedAt DateTime @updatedAt
 
   locations Location[]
+
+  storyAssociations StoryLegacy[]
 }
 
 model LegacyNotableColonist {
@@ -223,6 +261,8 @@ model Group {
   updatedAt DateTime @updatedAt
 
   colonists ColonistGroup[]
+
+  storyAssociations StoryGroup[]
 }
 
 model ColonistGroup {
@@ -274,6 +314,8 @@ model Location {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  storyAssociations StoryLocation[]
 }
 
 model LocationPreviousName {
@@ -320,22 +362,6 @@ model LocationLandmarkImage {
   landmark   LocationLandmark @relation(fields: [landmarkId], references: [id], onDelete: Cascade)
 }
 
-enum LocationType {
-  PLAYABLE_MAP
-  OUTPOST
-  OTHER
-}
-
-enum RelicCategory {
-  IDEOLOGY
-  WEAPON
-  PERSONAL
-  LEGACY
-  STORY
-  SYMBOLIC
-  OTHER
-}
-
 model Relic {
   id          Int     @id @default(autoincrement())
   name        String
@@ -344,12 +370,11 @@ model Relic {
 
   categories RelicCategory[]
 
-  //Image used for the view and cards  while the others are apart of the gallery
+  // Image used for the view and cards while the others are part of the gallery.
   primaryImageURL String?
   origin          String?
 
-  // Some relics are owned by a specific colonist,
-  // while others are effectively colony-owned / unowned.
+  // Some relics are owned by a specific colonist, while others are colony-owned / unowned.
   ownerId Int?
   owner   Colonist? @relation("CurrentRelicOwner", fields: [ownerId], references: [id], onDelete: SetNull)
 
@@ -360,11 +385,13 @@ model Relic {
   // Previous colonist ownership, when relevant.
   ownershipHistory RelicOwnership[]
 
-  //Relic Gallery
+  // Relic gallery.
   images RelicImage[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  storyAssociations StoryRelic[]
 }
 
 model RelicOwnership {
@@ -394,4 +421,258 @@ model HighlightSnapshot {
   key       String   @id
   value     String   @db.Text
   updatedAt DateTime @updatedAt
+}
+
+// -----------------------------------------------------------------------------
+// Stories
+// -----------------------------------------------------------------------------
+
+model Story {
+  id      Int         @id @default(autoincrement())
+  title   String
+  summary String?     @db.Text
+  type    String
+  status  StoryStatus @default(DRAFT)
+
+  // Canonical Tiptap document JSON. Private comment anchors/marks are retained here
+  // for editing, then stripped when generating reader-facing output.
+  content Json
+
+  // Private, story-wide drafting notes; never included in the reader-facing story.
+  editorialNotes String? @db.Text
+
+  // RimWorld date components are nullable to support partial dates. Month uses the
+  // same numeric convention as Colonist.birthMonth / deathMonth (1-4).
+  dateType StoryDateType @default(UNKNOWN)
+
+  dateStartDay         Int?
+  dateStartMonth       Int?
+  dateStartYear        Int?
+  dateStartApproximate Boolean @default(false)
+
+  dateEndDay         Int?
+  dateEndMonth       Int?
+  dateEndYear        Int?
+  dateEndApproximate Boolean @default(false)
+
+  tags              StoryTag[]
+  collectionLinks   StoryCollectionMembership[]
+  editorialComments StoryEditorialComment[]
+  referenceLinks    StoryReference[]
+  inlineAssets      StoryInlineAsset[]
+
+  relatedColonists StoryColonist[]
+  relatedLegacies  StoryLegacy[]
+  relatedGroups    StoryGroup[]
+  relatedLocations StoryLocation[]
+  relatedRelics    StoryRelic[]
+
+  relatedStories StoryRelatedStory[] @relation("StoryRelatedFrom")
+  referencedBy   StoryRelatedStory[] @relation("StoryRelatedTo")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, updatedAt])
+  @@index([dateType, dateStartYear])
+}
+
+model Tag {
+  id        Int        @id @default(autoincrement())
+  name      String     @unique
+  stories   StoryTag[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model StoryTag {
+  storyId Int
+  tagId   Int
+
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  tag   Tag   @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([storyId, tagId])
+  @@index([tagId])
+}
+
+model StoryCollection {
+  id        Int                       @id @default(autoincrement())
+  name      String                    @unique
+  stories   StoryCollectionMembership[]
+  createdAt DateTime                  @default(now())
+  updatedAt DateTime                  @updatedAt
+}
+
+model StoryCollectionMembership {
+  storyId      Int
+  collectionId Int
+
+  story      Story           @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  collection StoryCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@id([storyId, collectionId])
+  @@index([collectionId])
+}
+
+model StoryEditorialComment {
+  // ID is also referenced by the editorialComment mark or editorialCommentAnchor node
+  // inside Story.content. Keep the row separate so its text is never published by default.
+  id      String @id @default(cuid())
+  storyId Int
+  text    String @db.Text
+
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([storyId, createdAt])
+}
+
+model ReferenceMaterial {
+  id    Int                  @id @default(autoincrement())
+  title String
+  kind  ReferenceMaterialType
+
+  // Optional source name, filename, message source, or other identifier.
+  source String? @db.Text
+
+  // Optional excerpt/transcription/details belonging to the reference itself.
+  content String? @db.Text
+
+  // IMAGE and FILE references can point to an uploaded object stored in MinIO.
+  assetId Int?         @unique
+  asset   StoredAsset? @relation(fields: [assetId], references: [id], onDelete: SetNull)
+
+  stories StoryReference[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([kind, title])
+}
+
+model StoryReference {
+  storyId     Int
+  referenceId Int
+
+  // Story-specific explanation of why this reusable source matters here.
+  contextNote String? @db.Text
+
+  story     Story             @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  reference ReferenceMaterial @relation(fields: [referenceId], references: [id], onDelete: Cascade)
+
+  @@id([storyId, referenceId])
+  @@index([referenceId])
+}
+
+model StoredAsset {
+  id               Int      @id @default(autoincrement())
+  objectKey        String   @unique
+  originalFileName String
+  mimeType         String?
+  sizeBytes        Int?
+
+  // Store a MinIO object key, not an environment-specific public URL.
+  referenceMaterial ReferenceMaterial?
+  inlineStories     StoryInlineAsset[]
+
+  createdAt DateTime @default(now())
+}
+
+// Tracks assets used as inline story images. Tiptap content stores the asset ID plus
+// presentation attributes (alt text, caption, alignment); this relation supports
+// lookups and safe cleanup when images are removed from a story.
+model StoryInlineAsset {
+  storyId Int
+  assetId Int
+
+  story Story       @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  asset StoredAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@id([storyId, assetId])
+  @@index([assetId])
+}
+
+// Manual associations and inline-link associations are tracked independently so the
+// UI can distinguish Manual, Inline, and Inline + manual, as in the prototype.
+model StoryColonist {
+  storyId    Int
+  colonistId Int
+  isManual   Boolean @default(false)
+  isInline   Boolean @default(false)
+
+  story    Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  colonist Colonist @relation(fields: [colonistId], references: [id], onDelete: Cascade)
+
+  @@id([storyId, colonistId])
+  @@index([colonistId])
+}
+
+model StoryLegacy {
+  storyId  Int
+  legacyId Int
+  isManual Boolean @default(false)
+  isInline Boolean @default(false)
+
+  story  Story  @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  legacy Legacy @relation(fields: [legacyId], references: [id], onDelete: Cascade)
+
+  @@id([storyId, legacyId])
+  @@index([legacyId])
+}
+
+model StoryGroup {
+  storyId  Int
+  groupId  Int
+  isManual Boolean @default(false)
+  isInline Boolean @default(false)
+
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@id([storyId, groupId])
+  @@index([groupId])
+}
+
+model StoryLocation {
+  storyId    Int
+  locationId Int
+  isManual   Boolean @default(false)
+  isInline   Boolean @default(false)
+
+  story    Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@id([storyId, locationId])
+  @@index([locationId])
+}
+
+model StoryRelic {
+  storyId  Int
+  relicId  Int
+  isManual Boolean @default(false)
+  isInline Boolean @default(false)
+
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  relic Relic @relation(fields: [relicId], references: [id], onDelete: Cascade)
+
+  @@id([storyId, relicId])
+  @@index([relicId])
+}
+
+// Directional relationship: story A may reference story B without implying
+// that story B must also reference story A.
+model StoryRelatedStory {
+  storyId        Int
+  relatedStoryId Int
+  isManual       Boolean @default(false)
+  isInline       Boolean @default(false)
+
+  story        Story @relation("StoryRelatedFrom", fields: [storyId], references: [id], onDelete: Cascade)
+  relatedStory Story @relation("StoryRelatedTo", fields: [relatedStoryId], references: [id], onDelete: Cascade)
+
+  @@id([storyId, relatedStoryId])
+  @@index([relatedStoryId])
 }

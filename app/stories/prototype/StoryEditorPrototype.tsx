@@ -82,7 +82,7 @@ import {
 import { Fragment } from "@tiptap/pm/model";
 import { TextSelection } from "@tiptap/pm/state";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
-import classes from "./story-editor-prototype.module.css";
+import classes from "../story-editor.module.css";
 
 type ArchiveCategory =
     | "Colonist"

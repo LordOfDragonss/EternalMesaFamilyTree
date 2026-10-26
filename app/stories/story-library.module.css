@@ -1,0 +1,113 @@
+.page {
+    width: 100%;
+    padding: 2rem;
+}
+
+.storyList {
+    border-top: 1px solid #292929;
+}
+
+.storyRow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 24px;
+    align-items: center;
+
+    padding: 20px 16px;
+
+    border-bottom: 1px solid #292929;
+
+    transition: background-color 150ms ease;
+}
+
+.storyRow:hover {
+    background-color: #141414;
+}
+
+.storyMain {
+    min-width: 0;
+}
+
+.storyTitle {
+    color: #e9904f;
+    font-size: 1.05rem;
+    font-weight: 600;
+    line-height: 1.4;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+}
+
+.storyTitle:hover {
+    color: #f2a56d;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.summary {
+    max-width: 900px;
+    overflow-wrap: anywhere;
+
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+}
+
+.metadata {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 16px;
+
+    margin-top: 10px;
+
+    color: #929292;
+    font-size: 0.78rem;
+}
+
+.storyAside {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+
+    min-width: 0;
+}
+
+.recordCounts {
+    max-width: 220px;
+    text-align: right;
+}
+
+.emptyState {
+    padding: 48px 20px;
+
+    border-top: 1px solid #292929;
+    border-bottom: 1px solid #292929;
+
+    text-align: center;
+    background: #131313;
+    border-radius: 0 0 8px 8px;
+}
+
+@media (max-width: 760px) {
+    .page {
+        padding: 1.25rem;
+    }
+
+    .storyRow {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 12px;
+        padding: 16px 12px;
+    }
+
+    .storyAside {
+        justify-content: space-between;
+    }
+
+    .recordCounts {
+        max-width: 100%;
+        text-align: left;
+    }
+}

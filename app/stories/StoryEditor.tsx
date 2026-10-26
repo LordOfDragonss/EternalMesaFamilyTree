@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
     Alert,
@@ -198,6 +198,26 @@ export default function StoryEditor({
             setIsSaving(false);
         }
     }
+    useEffect(() => {
+        function handleKeyDown(event: KeyboardEvent) {
+            const isSaveShortcut =
+                (event.ctrlKey || event.metaKey) &&
+                !event.shiftKey &&
+                !event.altKey &&
+                event.key.toLowerCase() === "s";
+
+            if (!isSaveShortcut) return;
+
+            event.preventDefault();
+            void handleSave();
+        }
+
+        window.addEventListener("keydown", handleKeyDown);
+
+        return () => {
+            window.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [handleSave]);
 
     function handleManualRecordsChange(keys: ArchiveRecordKey[]) {
         updateValue("manualRelatedRecordKeys", keys);

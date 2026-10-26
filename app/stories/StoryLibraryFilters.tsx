@@ -100,18 +100,18 @@ export default function StoryLibraryFilters({
 
             <Select
                 label="Status"
-                placeholder="All statuses"
                 data={[
+                    { value: "ALL", label: "All statuses" },
                     { value: "DRAFT", label: "Draft" },
                     { value: "COMPLETE", label: "Complete" },
                 ]}
-                value={initialStatus || null}
+                value={initialStatus}
                 onChange={(value) =>
                     updateParams({
-                        status: value,
+                        status: value === "COMPLETE" ? null : value,
                     })
                 }
-                clearable
+                allowDeselect={false}
                 style={{
                     flex: "1 1 130px",
                     minWidth: 0,

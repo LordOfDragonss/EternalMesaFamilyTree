@@ -95,15 +95,25 @@ function formatUpdatedAt(date: Date): string {
 export default async function StoriesPage({
     searchParams,
 }: StoriesPageProps) {
+
     const params = await searchParams;
+
 
     const search = params.search?.trim() ?? "";
 
-    const statusFilter =
-        params.status === "DRAFT" ||
-        params.status === "COMPLETE"
+    // The selected status defaults to COMPLETE when the URL has no valid status.
+    const statusSelection =
+        params.status === "ALL" ||
+            params.status === "DRAFT" ||
+            params.status === "COMPLETE"
             ? params.status
-            : undefined;
+            : "COMPLETE";
+
+    // ALL means no status restriction in the database query.
+    const statusFilter =
+        statusSelection === "ALL"
+            ? undefined
+            : statusSelection;
 
     const typeFilter = STORY_TYPE_OPTIONS.some(
         (option) => option === params.type,
@@ -119,56 +129,56 @@ export default async function StoriesPage({
     const orderBy =
         sort === "title"
             ? [
-                  { title: "asc" as const },
-                  { updatedAt: "desc" as const },
-              ]
+                { title: "asc" as const },
+                { updatedAt: "desc" as const },
+            ]
             : sort === "created"
-              ? [{ createdAt: "desc" as const }]
-              : [{ updatedAt: "desc" as const }];
+                ? [{ createdAt: "desc" as const }]
+                : [{ updatedAt: "desc" as const }];
 
     const stories = await prisma.story.findMany({
         where: {
             ...(search
                 ? {
-                      OR: [
-                          {
-                              title: {
-                                  contains: search,
-                                  mode: "insensitive" as const,
-                              },
-                          },
-                          {
-                              summary: {
-                                  contains: search,
-                                  mode: "insensitive" as const,
-                              },
-                          },
-                          {
-                              tags: {
-                                  some: {
-                                      tag: {
-                                          name: {
-                                              contains: search,
-                                              mode: "insensitive" as const,
-                                          },
-                                      },
-                                  },
-                              },
-                          },
-                          {
-                              collectionLinks: {
-                                  some: {
-                                      collection: {
-                                          name: {
-                                              contains: search,
-                                              mode: "insensitive" as const,
-                                          },
-                                      },
-                                  },
-                              },
-                          },
-                      ],
-                  }
+                    OR: [
+                        {
+                            title: {
+                                contains: search,
+                                mode: "insensitive" as const,
+                            },
+                        },
+                        {
+                            summary: {
+                                contains: search,
+                                mode: "insensitive" as const,
+                            },
+                        },
+                        {
+                            tags: {
+                                some: {
+                                    tag: {
+                                        name: {
+                                            contains: search,
+                                            mode: "insensitive" as const,
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                        {
+                            collectionLinks: {
+                                some: {
+                                    collection: {
+                                        name: {
+                                            contains: search,
+                                            mode: "insensitive" as const,
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    ],
+                }
                 : {}),
             ...(statusFilter ? { status: statusFilter } : {}),
             ...(typeFilter ? { type: typeFilter } : {}),
@@ -228,7 +238,7 @@ export default async function StoriesPage({
 
             <StoryLibraryFilters
                 initialSearch={search}
-                initialStatus={statusFilter ?? ""}
+                initialStatus={statusSelection}
                 initialType={typeFilter ?? ""}
                 initialSort={sort}
             />
@@ -264,7 +274,7 @@ export default async function StoriesPage({
                                         wrap="wrap"
                                     >
                                         <a
-                                            href={`/stories/${story.id}/edit`}
+                                            href={`/stories/${story.id}`}
                                             className={classes.storyTitle}
                                         >
                                             {story.title}
@@ -307,36 +317,36 @@ export default async function StoriesPage({
 
                                     {(story.tags.length > 0 ||
                                         story.collectionLinks.length > 0) && (
-                                        <Group
-                                            gap={6}
-                                            mt="sm"
-                                            wrap="wrap"
-                                        >
-                                            {story.tags.map(({ tag }) => (
-                                                <Badge
-                                                    key={tag.id}
-                                                    variant="outline"
-                                                    color="gray"
-                                                    size="sm"
-                                                >
-                                                    {tag.name}
-                                                </Badge>
-                                            ))}
-
-                                            {story.collectionLinks.map(
-                                                ({ collection }) => (
+                                            <Group
+                                                gap={6}
+                                                mt="sm"
+                                                wrap="wrap"
+                                            >
+                                                {story.tags.map(({ tag }) => (
                                                     <Badge
-                                                        key={collection.id}
-                                                        variant="light"
-                                                        color="mesa"
+                                                        key={tag.id}
+                                                        variant="outline"
+                                                        color="gray"
                                                         size="sm"
                                                     >
-                                                        {collection.name}
+                                                        {tag.name}
                                                     </Badge>
-                                                ),
-                                            )}
-                                        </Group>
-                                    )}
+                                                ))}
+
+                                                {story.collectionLinks.map(
+                                                    ({ collection }) => (
+                                                        <Badge
+                                                            key={collection.id}
+                                                            variant="light"
+                                                            color="mesa"
+                                                            size="sm"
+                                                        >
+                                                            {collection.name}
+                                                        </Badge>
+                                                    ),
+                                                )}
+                                            </Group>
+                                        )}
                                 </div>
 
                                 <div className={classes.storyAside}>
@@ -346,10 +356,9 @@ export default async function StoriesPage({
                                         className={classes.recordCounts}
                                     >
                                         {archiveRecordCount > 0 &&
-                                            `${archiveRecordCount} linked ${
-                                                archiveRecordCount === 1
-                                                    ? "record"
-                                                    : "records"
+                                            `${archiveRecordCount} linked ${archiveRecordCount === 1
+                                                ? "record"
+                                                : "records"
                                             }`}
 
                                         {archiveRecordCount > 0 &&
@@ -357,10 +366,9 @@ export default async function StoriesPage({
                                             " · "}
 
                                         {story._count.referenceLinks > 0 &&
-                                            `${story._count.referenceLinks} ${
-                                                story._count.referenceLinks === 1
-                                                    ? "reference"
-                                                    : "references"
+                                            `${story._count.referenceLinks} ${story._count.referenceLinks === 1
+                                                ? "reference"
+                                                : "references"
                                             }`}
 
                                         {(archiveRecordCount > 0 ||
@@ -369,10 +377,9 @@ export default async function StoriesPage({
                                             " · "}
 
                                         {story._count.inlineAssets > 0 &&
-                                            `${story._count.inlineAssets} ${
-                                                story._count.inlineAssets === 1
-                                                    ? "image"
-                                                    : "images"
+                                            `${story._count.inlineAssets} ${story._count.inlineAssets === 1
+                                                ? "image"
+                                                : "images"
                                             }`}
                                     </Text>
 

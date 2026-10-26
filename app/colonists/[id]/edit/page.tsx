@@ -15,6 +15,9 @@ import LegacySelector from "@/app/colonists/create/LegacySelector";
 import PortraitUpload from "@/app/colonists/create/PortraitUpload";
 import SkillsEditor from "../skills/SkillsEditor";
 import ExpertiseEditor from "../skills/ExpertiseEditor";
+import {
+    ColonistIdentityProvider,
+} from "@/app/lib/ColonistIdentityContext";
 
 export default async function EditColonist({
     params,
@@ -504,6 +507,7 @@ export default async function EditColonist({
                 padding: "2.5rem 1.5rem",
             }}
         >
+            <ColonistIdentityProvider>
             <Stack gap="xl">
 
                 {/* Header */}
@@ -936,6 +940,7 @@ export default async function EditColonist({
                     }
                 />
             </Stack>
+            </ColonistIdentityProvider>
         </main>
     );
 }

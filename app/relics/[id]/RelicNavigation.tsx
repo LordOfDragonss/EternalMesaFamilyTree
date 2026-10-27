@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Tabs } from "@mantine/core";
@@ -20,12 +21,12 @@ export default function RelicNavigation({
 
     let activeTab = "overview";
 
-    if (
-        pathname.startsWith(
-            `${basePath}/gallery`
-        )
-    ) {
+    if (pathname.startsWith(`${basePath}/gallery`)) {
         activeTab = "gallery";
+    } else if (
+        pathname.startsWith(`${basePath}/stories`)
+    ) {
+        activeTab = "stories";
     }
 
     function navigate(value: string | null) {
@@ -54,6 +55,10 @@ export default function RelicNavigation({
 
                 <Tabs.Tab value="gallery">
                     Gallery
+                </Tabs.Tab>
+
+                <Tabs.Tab value="stories">
+                    Stories
                 </Tabs.Tab>
             </Tabs.List>
         </Tabs>

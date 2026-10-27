@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Tabs } from "@mantine/core";
@@ -30,6 +31,10 @@ export default function LocationNavigation({
         pathname.startsWith(`${basePath}/colonists`)
     ) {
         activeTab = "colonists";
+    } else if (
+        pathname.startsWith(`${basePath}/stories`)
+    ) {
+        activeTab = "stories";
     }
 
     function navigate(value: string | null) {
@@ -66,6 +71,10 @@ export default function LocationNavigation({
 
                 <Tabs.Tab value="colonists">
                     Colonists
+                </Tabs.Tab>
+
+                <Tabs.Tab value="stories">
+                    Stories
                 </Tabs.Tab>
             </Tabs.List>
         </Tabs>

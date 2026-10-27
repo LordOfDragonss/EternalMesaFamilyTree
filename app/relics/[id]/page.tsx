@@ -57,6 +57,23 @@ export default async function RelicPage({
                     order: "asc",
                 },
             },
+
+            storyAssociations: {
+                where: {
+                    story: {
+                        status: "COMPLETE",
+                    },
+                },
+                include: {
+                    story: true,
+                },
+                orderBy: {
+                    story: {
+                        updatedAt: "desc",
+                    },
+                },
+            },
+
         },
     });
 
@@ -392,6 +409,52 @@ export default async function RelicPage({
                         </Text>
                     </Stack>
                 </Card>
+
+                {/* Stories */}
+                <Card
+                    shadow="sm"
+                    padding="xl"
+                    radius="md"
+                    withBorder
+                    bg="#161616"
+                    style={{
+                        borderColor: "#292929",
+                    }}
+                >
+                    <Stack gap="md">
+                        <div>
+                            <Title order={3}>
+                                Stories
+                            </Title>
+
+                            <Text
+                                c="dimmed"
+                                size="sm"
+                                mt={2}
+                            >
+                                Stories associated with this relic.
+                            </Text>
+                        </div>
+
+                        <Text>
+                            {relic.storyAssociations.length}{" "}
+                            {relic.storyAssociations.length === 1
+                                ? "story"
+                                : "stories"}{" "}
+                            associated with this relic.
+                        </Text>
+
+                        <Text
+                            component="a"
+                            href={`/relics/${relic.id}/stories`}
+                            c="mesa"
+                            fw={500}
+                        >
+                            View stories
+                        </Text>
+                    </Stack>
+                </Card>
+
             </Stack>
         </main>
     );

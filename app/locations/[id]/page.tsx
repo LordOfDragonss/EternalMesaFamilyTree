@@ -62,6 +62,23 @@ export default async function LocationPage({
                     name: "asc",
                 },
             },
+
+            storyAssociations: {
+                where: {
+                    story: {
+                        status: "COMPLETE",
+                    },
+                },
+                include: {
+                    story: true,
+                },
+                orderBy: {
+                    story: {
+                        updatedAt: "desc",
+                    },
+                },
+            },
+
         },
     });
 
@@ -296,6 +313,51 @@ export default async function LocationPage({
                         </Text>
                     </Stack>
                 </Card>
+
+                <Card
+                    shadow="sm"
+                    padding="xl"
+                    radius="md"
+                    withBorder
+                    bg="#161616"
+                    style={{
+                        borderColor: "#292929",
+                    }}
+                >
+                    <Stack gap="md">
+                        <div>
+                            <Title order={3}>
+                                Stories
+                            </Title>
+
+                            <Text
+                                c="dimmed"
+                                size="sm"
+                                mt={2}
+                            >
+                                Stories associated with this location.
+                            </Text>
+                        </div>
+
+                        <Text>
+                            {location.storyAssociations.length}{" "}
+                            {location.storyAssociations.length === 1
+                                ? "story"
+                                : "stories"}{" "}
+                            associated with this location.
+                        </Text>
+
+                        <Text
+                            component="a"
+                            href={`/locations/${location.id}/stories`}
+                            c="mesa"
+                            fw={500}
+                        >
+                            View stories
+                        </Text>
+                    </Stack>
+                </Card>
+
             </Stack>
         </main>
     );

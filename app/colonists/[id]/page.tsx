@@ -102,6 +102,22 @@ export default async function ColonistPage({
                     },
                 },
             },
+            images: {
+                select: {
+                    id: true,
+                },
+            },
+
+            storyAssociations: {
+                where: {
+                    story: {
+                        status: "COMPLETE",
+                    },
+                },
+                select: {
+                    storyId: true,
+                },
+            },
         },
     });
 
@@ -679,6 +695,77 @@ export default async function ColonistPage({
                         </Text>
                     </Stack>
                 </Card>
+                <Group grow align="stretch">
+                    {/* Stories */}
+                    <Card
+                        shadow="sm"
+                        padding="xl"
+                        radius="md"
+                        withBorder
+                        bg="#161616"
+                        style={{ borderColor: "#292929" }}
+                    >
+                        <Stack gap="md">
+                            <div>
+                                <Title order={3}>Stories</Title>
+
+                                <Text c="dimmed" size="sm" mt={2}>
+                                    Narratives featuring this colonist.
+                                </Text>
+                            </div>
+
+                            <Text>
+                                {colonist.storyAssociations.length}{" "}
+                                {colonist.storyAssociations.length === 1
+                                    ? "published story"
+                                    : "published stories"}
+                            </Text>
+
+                            <Text
+                                component="a"
+                                href={`/colonists/${colonist.id}/stories`}
+                                c="mesa"
+                                fw={500}
+                            >
+                                View stories
+                            </Text>
+                        </Stack>
+                    </Card>
+
+                    {/* Gallery */}
+                    <Card
+                        shadow="sm"
+                        padding="xl"
+                        radius="md"
+                        withBorder
+                        bg="#161616"
+                        style={{ borderColor: "#292929" }}
+                    >
+                        <Stack gap="md">
+                            <div>
+                                <Title order={3}>Gallery</Title>
+
+                                <Text c="dimmed" size="sm" mt={2}>
+                                    Portraits and other images of this colonist.
+                                </Text>
+                            </div>
+
+                            <Text>
+                                {colonist.images.length}{" "}
+                                {colonist.images.length === 1 ? "image" : "images"}
+                            </Text>
+
+                            <Text
+                                component="a"
+                                href={`/colonists/${colonist.id}/gallery`}
+                                c="mesa"
+                                fw={500}
+                            >
+                                View gallery
+                            </Text>
+                        </Stack>
+                    </Card>
+                </Group>
             </Stack>
         </main>
     );

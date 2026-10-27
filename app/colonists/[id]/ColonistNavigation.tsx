@@ -47,6 +47,7 @@ export default function ColonistNavigation({
             "family",
             "skills",
             "gallery",
+            "stories",
         ];
 
         if (implementedTabs.includes(value)) {

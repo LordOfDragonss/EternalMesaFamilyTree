@@ -1,6 +1,8 @@
+
 import { prisma } from "@/lib/prisma";
 import {
     ActionIcon,
+    Badge,
     Card,
     Group,
     Select,
@@ -11,6 +13,7 @@ import {
 } from "@mantine/core";
 import { ArrowLeft, Pencil, Plus } from "lucide-react";
 import LegacyNotableColonists from "@/app/components/LegacyNotableColonists";
+import LegacyCollapsibleCard from "./LegacyCollapsibleCard";
 
 export default async function LegacyPage({
     params,
@@ -18,7 +21,6 @@ export default async function LegacyPage({
     params: Promise<{ id: string }>;
 }) {
     const { id } = await params;
-
     const legacyId = Number(id);
 
     const legacy = await prisma.legacy.findUnique({
@@ -52,6 +54,22 @@ export default async function LegacyPage({
                     },
                 },
             },
+
+            storyAssociations: {
+                where: {
+                    story: {
+                        status: "COMPLETE",
+                    },
+                },
+                include: {
+                    story: true,
+                },
+                orderBy: {
+                    story: {
+                        updatedAt: "desc",
+                    },
+                },
+            },
         },
     });
 
@@ -61,7 +79,6 @@ export default async function LegacyPage({
 
     /*
      * Colonists who do not currently belong to a legacy.
-     * These are the colonists that can be added here.
      */
     const availableColonists = await prisma.colonist.findMany({
         where: {
@@ -138,6 +155,8 @@ export default async function LegacyPage({
 
     const legacyColor = legacy.color || "#C8C4BC";
 
+    const stories = legacy.storyAssociations;
+
     return (
         <main
             style={{
@@ -147,7 +166,6 @@ export default async function LegacyPage({
             }}
         >
             <Stack gap="xl">
-
                 {/* Header */}
                 <Group
                     justify="space-between"
@@ -157,7 +175,6 @@ export default async function LegacyPage({
                         align="stretch"
                         gap="md"
                     >
-                        {/* Legacy color accent */}
                         <div
                             style={{
                                 width: 5,
@@ -178,10 +195,7 @@ export default async function LegacyPage({
                             </Title>
 
                             {legacy.description && (
-                                <Text
-                                    c="dimmed"
-                                    mt={4}
-                                >
+                                <Text c="dimmed" mt={4}>
                                     {legacy.description}
                                 </Text>
                             )}
@@ -244,33 +258,19 @@ export default async function LegacyPage({
 
                         {legacy.foundingColonist && (
                             <div>
-                                <Text
-                                    size="sm"
-                                    c="dimmed"
-                                >
+                                <Text size="sm" c="dimmed">
                                     Founded by
                                 </Text>
 
                                 <Text>
-                                    {
-                                        legacy
-                                            .foundingColonist
-                                            .firstName
-                                    }{" "}
-                                    {
-                                        legacy
-                                            .foundingColonist
-                                            .lastName
-                                    }
+                                    {legacy.foundingColonist.firstName}{" "}
+                                    {legacy.foundingColonist.lastName}
                                 </Text>
                             </div>
                         )}
 
                         <div>
-                            <Text
-                                size="sm"
-                                c="dimmed"
-                            >
+                            <Text size="sm" c="dimmed">
                                 Members
                             </Text>
 
@@ -303,11 +303,7 @@ export default async function LegacyPage({
                                 Notable Colonists
                             </Title>
 
-                            <Text
-                                c="dimmed"
-                                size="sm"
-                                mt={2}
-                            >
+                            <Text c="dimmed" size="sm" mt={2}>
                                 Colonists remembered for their contributions
                                 to this legacy.
                             </Text>
@@ -322,62 +318,41 @@ export default async function LegacyPage({
                     </Stack>
                 </Card>
 
+
+
                 {/* Members */}
-                <Card
-                    shadow="sm"
-                    padding="xl"
-                    radius="md"
-                    withBorder
-                    bg="#161616"
-                    style={{
-                        borderColor: `${legacyColor}55`,
-                    }}
+                <LegacyCollapsibleCard
+                    title="Members"
+                    count={legacy.members.length}
+                    value="members"
+                    legacyColor={legacyColor}
                 >
                     <Stack gap="md">
-                        <div>
-                            <Title
-                                order={3}
-                                style={{
-                                    color: legacyColor,
-                                }}
-                            >
-                                Members
-                            </Title>
-
-                            <Text
-                                c="dimmed"
-                                size="sm"
-                                mt={2}
-                            >
-                                Colonists belonging to this legacy.
-                            </Text>
-                        </div>
+                        <Text c="dimmed" size="sm">
+                            Colonists belonging to this legacy.
+                        </Text>
 
                         <Stack gap="xs">
-                            {legacy.members.map(
-                                (colonist) => (
-                                    <Text
-                                        key={colonist.id}
-                                        component="a"
-                                        href={`/colonists/${colonist.id}`}
-                                        style={{
-                                            color: legacyColor,
-                                            textDecoration:
-                                                "none",
-                                        }}
-                                    >
-                                        {colonist.firstName}{" "}
-                                        {colonist.nickname &&
-                                            `"${colonist.nickname}"`}{" "}
-                                        {colonist.lastName}
-                                    </Text>
-                                )
-                            )}
+                            {legacy.members.map((colonist) => (
+                                <Text
+                                    key={colonist.id}
+                                    component="a"
+                                    href={`/colonists/${colonist.id}`}
+                                    style={{
+                                        color: legacyColor,
+                                        textDecoration: "none",
+                                    }}
+                                >
+                                    {colonist.firstName}{" "}
+                                    {colonist.nickname &&
+                                        `"${colonist.nickname}"`}{" "}
+                                    {colonist.lastName}
+                                </Text>
+                            ))}
 
                             {legacy.members.length === 0 && (
                                 <Text c="dimmed">
-                                    No colonists belong to
-                                    this legacy yet.
+                                    No colonists belong to this legacy yet.
                                 </Text>
                             )}
                         </Stack>
@@ -409,8 +384,7 @@ export default async function LegacyPage({
                                             variant="filled"
                                             aria-label="Add member"
                                             style={{
-                                                backgroundColor:
-                                                    legacyColor,
+                                                backgroundColor: legacyColor,
                                             }}
                                         >
                                             <Plus size={20} />
@@ -421,17 +395,92 @@ export default async function LegacyPage({
                         )}
 
                         {availableColonists.length === 0 && (
-                            <Text
-                                size="sm"
-                                c="dimmed"
-                            >
-                                All colonists already belong to
-                                a legacy.
+                            <Text size="sm" c="dimmed">
+                                All colonists already belong to a legacy.
                             </Text>
                         )}
                     </Stack>
-                </Card>
+                </LegacyCollapsibleCard>
 
+                {/* Stories */}
+                <LegacyCollapsibleCard
+                    title="Stories"
+                    count={stories.length}
+                    value="stories"
+                    legacyColor={legacyColor}
+                >
+                    <Stack gap="md">
+                        <Text c="dimmed" size="sm">
+                            Published stories associated with this legacy.
+                        </Text>
+
+                        {stories.length === 0 ? (
+                            <Text c="dimmed">
+                                No stories have been associated with this legacy yet.
+                            </Text>
+                        ) : (
+                            <Stack gap="sm">
+                                {stories.map((association) => (
+                                    <Card
+                                        key={association.storyId}
+                                        padding="md"
+                                        radius="sm"
+                                        withBorder
+                                        bg="#101010"
+                                        style={{
+                                            borderColor: "#292929",
+                                        }}
+                                    >
+                                        <Stack gap="xs">
+                                            <Text
+                                                component="a"
+                                                href={`/stories/${association.story.id}`}
+                                                fw={600}
+                                                c={legacyColor}
+                                                style={{
+                                                    textDecoration: "none",
+                                                }}
+                                            >
+                                                {association.story.title}
+                                            </Text>
+
+                                            {association.story.summary && (
+                                                <Text
+                                                    size="sm"
+                                                    c="dimmed"
+                                                    lineClamp={3}
+                                                >
+                                                    {association.story.summary}
+                                                </Text>
+                                            )}
+
+                                            <Group gap="xs">
+                                                {association.isInline && (
+                                                    <Badge
+                                                        variant="light"
+                                                        color="cyan"
+                                                    >
+                                                        Inline mention
+                                                    </Badge>
+                                                )}
+
+                                                {association.isManual && (
+                                                    <Badge
+                                                        variant="light"
+                                                        color="grape"
+                                                    >
+                                                        Manual
+                                                    </Badge>
+                                                )}
+                                            </Group>
+                                        </Stack>
+                                    </Card>
+                                ))}
+                            </Stack>
+                        )}
+                    </Stack>
+                </LegacyCollapsibleCard>
+                
             </Stack>
         </main>
     );

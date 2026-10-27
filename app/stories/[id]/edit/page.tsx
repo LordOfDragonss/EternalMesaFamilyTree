@@ -40,7 +40,7 @@ export default async function EditStoryPage({
         notFound();
     }
 
-    const [story, collections, archiveRecords, references] = await Promise.all([
+    const [story, collections, tags, archiveRecords, references] = await Promise.all([
         prisma.story.findUnique({
             where: { id },
             include: {
@@ -89,6 +89,10 @@ export default async function EditStoryPage({
             },
         }),
         prisma.storyCollection.findMany({
+            select: { name: true },
+            orderBy: { name: "asc" },
+        }),
+        prisma.tag.findMany({
             select: { name: true },
             orderBy: { name: "asc" },
         }),
@@ -168,6 +172,7 @@ export default async function EditStoryPage({
             initialAvailableCollections={collections.map(
                 (collection) => collection.name,
             )}
+            initialAvailableTags={tags.map((tag) => tag.name)}
             availableArchiveRecords={archiveRecords}
             initialAvailableReferences={references}
         />

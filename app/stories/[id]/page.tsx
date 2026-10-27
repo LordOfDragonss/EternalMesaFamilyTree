@@ -24,6 +24,7 @@ import {
 } from "../types";
 import StoryReaderContent from "../components/StoryReaderContent";
 import classes from "../story-reader.module.css";
+import DeleteButton from "@/app/components/DeleteButton";
 
 type StoryPageProps = {
     params: Promise<{ id: string }>;
@@ -35,6 +36,20 @@ type RelatedRecord = {
     category: string;
     href: string;
     color?: string | null;
+};
+const detailActionIconStyles = {
+    root: {
+        color: "#fff",
+        transition: "background-color 150ms ease",
+        "&:hover": {
+            backgroundColor: "#A95728",
+            color: "#fff",
+        },
+        "&:focus-visible": {
+            backgroundColor: "#A95728",
+            color: "#fff",
+        },
+    },
 };
 
 function formatDateEndpoint(
@@ -294,7 +309,7 @@ export default async function StoryPage({
                             variant="subtle"
                             size="lg"
                             aria-label="Back to stories"
-                            style={{ color: "#e9904f" }}
+                            styles={detailActionIconStyles}
                         >
                             <ArrowLeft size={18} />
                         </ActionIcon>
@@ -307,11 +322,16 @@ export default async function StoryPage({
                             variant="subtle"
                             size="lg"
                             aria-label="Edit story"
-                            style={{ color: "#e9904f" }}
+                            styles={detailActionIconStyles}
                         >
                             <Pencil size={18} />
                         </ActionIcon>
                     </Tooltip>
+                    <DeleteButton
+                        action={`/api/stories/${story.id}/delete`}
+                        name={story.title}
+                        type="Story"
+                    />
                 </Group>
 
                 <Card

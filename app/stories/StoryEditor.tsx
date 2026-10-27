@@ -64,11 +64,13 @@ function getInitialValues(
 export default function StoryEditor({
     initialStory,
     initialAvailableCollections,
+    initialAvailableTags,
     availableArchiveRecords,
     initialAvailableReferences,
 }: {
     initialStory: StoryEditorData | null;
     initialAvailableCollections: string[];
+    initialAvailableTags: string[];
     availableArchiveRecords: ArchiveRecord[];
     initialAvailableReferences: ReferenceMaterialData[];
 }) {
@@ -77,9 +79,13 @@ export default function StoryEditor({
     const [values, setValues] = useState<StoryEditorValues>(
         () => getInitialValues(initialStory),
     );
+    const [availableTags, setAvailableTags] = useState(
+        initialAvailableTags,
+    );
     const [availableCollections, setAvailableCollections] = useState(
         initialAvailableCollections,
     );
+
     const [isSaving, setIsSaving] = useState(false);
     const [saveMessage, setSaveMessage] = useState(
         initialStory ? "All changes saved." : "",
@@ -182,6 +188,23 @@ export default function StoryEditor({
                 setSaveMessage("Not saved");
                 return;
             }
+            setAvailableTags((current) => {
+                const names = new Map(
+                    current.map((tag) => [tag.toLocaleLowerCase(), tag]),
+                );
+
+                for (const tag of values.tags) {
+                    const key = tag.trim().toLocaleLowerCase();
+
+                    if (key && !names.has(key)) {
+                        names.set(key, tag.trim());
+                    }
+                }
+
+                return [...names.values()].sort((a, b) =>
+                    a.localeCompare(b),
+                );
+            });
 
             setSaveMessage("Saved successfully.");
 
@@ -274,6 +297,7 @@ export default function StoryEditor({
                 startDate={values.startDate}
                 endDate={values.endDate}
                 tags={values.tags}
+                availableTags={availableTags}
                 collections={values.collections}
                 availableCollections={availableCollections}
                 onTitleChange={(value) => updateValue("title", value)}

@@ -2,6 +2,7 @@
 
 import {
     Group,
+    MultiSelect,
     Select,
     TextInput,
 } from "@mantine/core";
@@ -21,6 +22,11 @@ type StoryLibraryFiltersProps = {
     initialStatus: string;
     initialType: string;
     initialSort: string;
+    initialTags: string[];
+    availableTags: {
+        value: string;
+        label: string;
+    }[];
 };
 
 export default function StoryLibraryFilters({
@@ -28,6 +34,8 @@ export default function StoryLibraryFilters({
     initialStatus,
     initialType,
     initialSort,
+    initialTags,
+    availableTags,
 }: StoryLibraryFiltersProps) {
     const router = useRouter();
     const pathname = usePathname();
@@ -135,6 +143,30 @@ export default function StoryLibraryFilters({
                 searchable
                 style={{
                     flex: "1 1 180px",
+                    minWidth: 0,
+                }}
+            />
+
+            <MultiSelect
+                label="Tags"
+                placeholder="All tags"
+                data={availableTags}
+                value={initialTags}
+                onChange={(values) =>
+                    updateParams({
+                        tags: values.length > 0
+                            ? values.join(",")
+                            : null,
+                        // Remove the older single-tag parameter.
+                        tag: null,
+                    })
+                }
+                searchable
+                clearable
+                hidePickedOptions
+                nothingFoundMessage="No tags found"
+                style={{
+                    flex: "1 1 200px",
                     minWidth: 0,
                 }}
             />

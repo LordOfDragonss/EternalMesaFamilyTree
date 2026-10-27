@@ -140,7 +140,7 @@ export default async function GroupPage({
                                 variant="subtle"
                                 size="lg"
                                 aria-label="Back to groups"
-                                color="gray"
+                                color="mesa"
                             >
                                 <ArrowLeft size={18} />
                             </ActionIcon>

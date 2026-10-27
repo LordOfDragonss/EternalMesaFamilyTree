@@ -7,7 +7,7 @@ import {
     Title,
     Tooltip,
 } from "@mantine/core";
-import { Pencil, Plus } from "lucide-react";
+import { FolderOpen, Pencil, Plus, Tag } from "lucide-react";
 
 import { prisma } from "@/lib/prisma";
 import {
@@ -17,6 +17,7 @@ import {
 } from "./types";
 import StoryLibraryFilters from "./StoryLibraryFilters";
 import classes from "./story-library.module.css";
+import DeleteButton from "@/app/components/DeleteButton";
 
 type StoriesPageProps = {
     searchParams: Promise<{
@@ -24,6 +25,8 @@ type StoriesPageProps = {
         status?: string;
         type?: string;
         sort?: string;
+        tags?: string;
+        tag?: string;
     }>;
 };
 
@@ -95,9 +98,7 @@ function formatUpdatedAt(date: Date): string {
 export default async function StoriesPage({
     searchParams,
 }: StoriesPageProps) {
-
     const params = await searchParams;
-
 
     const search = params.search?.trim() ?? "";
 
@@ -135,6 +136,39 @@ export default async function StoriesPage({
             : sort === "created"
                 ? [{ createdAt: "desc" as const }]
                 : [{ updatedAt: "desc" as const }];
+
+    // Load all existing tags for the multi-select.
+    const tags = await prisma.tag.findMany({
+        select: {
+            id: true,
+            name: true,
+        },
+        orderBy: {
+            name: "asc",
+        },
+    });
+
+    // Support both the new comma-separated parameter and the older
+    // single-tag parameter so existing links remain usable.
+    const requestedTagIds = (params.tags ?? params.tag ?? "")
+        .split(",")
+        .map((value) => Number(value.trim()))
+        .filter(
+            (id) => Number.isSafeInteger(id) && id > 0,
+        );
+
+    const existingTagIds = new Set(
+        tags.map((tag) => tag.id),
+    );
+
+    const tagFilterIds = [...new Set(requestedTagIds)].filter(
+        (id) => existingTagIds.has(id),
+    );
+
+    const availableTags = tags.map((tag) => ({
+        value: String(tag.id),
+        label: tag.name,
+    }));
 
     const stories = await prisma.story.findMany({
         where: {
@@ -180,20 +214,42 @@ export default async function StoriesPage({
                     ],
                 }
                 : {}),
-            ...(statusFilter ? { status: statusFilter } : {}),
-            ...(typeFilter ? { type: typeFilter } : {}),
+
+            ...(statusFilter
+                ? { status: statusFilter }
+                : {}),
+
+            ...(typeFilter
+                ? { type: typeFilter }
+                : {}),
+
+            // A story must have at least one of the selected tags.
+            ...(tagFilterIds.length > 0
+                ? {
+                    tags: {
+                        some: {
+                            tagId: {
+                                in: tagFilterIds,
+                            },
+                        },
+                    },
+                }
+                : {}),
         },
+
         include: {
             tags: {
                 include: {
                     tag: true,
                 },
             },
+
             collectionLinks: {
                 include: {
                     collection: true,
                 },
             },
+
             _count: {
                 select: {
                     relatedColonists: true,
@@ -207,6 +263,7 @@ export default async function StoriesPage({
                 },
             },
         },
+
         orderBy,
     });
 
@@ -221,19 +278,52 @@ export default async function StoriesPage({
             >
                 <div>
                     <Title order={1}>Stories</Title>
+
                     <Text c="dimmed" mt={4}>
                         Browse and continue writing the history of the colony.
                     </Text>
                 </div>
 
-                <Button
-                    component="a"
-                    href="/stories/create"
-                    color="mesa"
-                    leftSection={<Plus size={17} />}
-                >
-                    New story
-                </Button>
+                <Group gap="xs">
+
+                    <Tooltip label="Manage story tags">
+                        <ActionIcon
+                            component="a"
+                            href="/stories/tags"
+                            size="lg"
+                            variant="filled"
+                            color="mesa"
+                            aria-label="Manage story tags"
+                        >
+                            <Tag size={20} />
+                        </ActionIcon>
+                    </Tooltip>
+                    <Tooltip label="Manage story collections">
+                        <ActionIcon
+                            component="a"
+                            href="/stories/collections"
+                            size="lg"
+                            variant="filled"
+                            color="mesa"
+                            aria-label="Manage story collections"
+                        >
+                            <FolderOpen size={20} />
+                        </ActionIcon>
+                    </Tooltip>
+
+                    <Tooltip label="Create story">
+                        <ActionIcon
+                            component="a"
+                            href="/stories/create"
+                            size="lg"
+                            variant="filled"
+                            color="mesa"
+                            aria-label="Create story"
+                        >
+                            <Plus size={20} />
+                        </ActionIcon>
+                    </Tooltip>
+                </Group>
             </Group>
 
             <StoryLibraryFilters
@@ -241,6 +331,8 @@ export default async function StoriesPage({
                 initialStatus={statusSelection}
                 initialType={typeFilter ?? ""}
                 initialSort={sort}
+                initialTags={tagFilterIds.map(String)}
+                availableTags={availableTags}
             />
 
             <Group justify="space-between" mb="sm">
@@ -306,9 +398,11 @@ export default async function StoriesPage({
 
                                     <div className={classes.metadata}>
                                         <span>{story.type}</span>
+
                                         <span>
                                             {formatStoryPeriod(story)}
                                         </span>
+
                                         <span>
                                             Updated{" "}
                                             {formatUpdatedAt(story.updatedAt)}
@@ -395,6 +489,12 @@ export default async function StoriesPage({
                                             <Pencil size={17} />
                                         </ActionIcon>
                                     </Tooltip>
+
+                                    <DeleteButton
+                                        action={`/api/stories/${story.id}/delete`}
+                                        name={story.title}
+                                        type="Story"
+                                    />
                                 </div>
                             </article>
                         );
@@ -403,29 +503,34 @@ export default async function StoriesPage({
             ) : (
                 <div className={classes.emptyState}>
                     <Title order={3} size="lg">
-                        {search || statusFilter || typeFilter
+                        {search || statusFilter || typeFilter ||
+                            tagFilterIds.length > 0
                             ? "No matching stories"
                             : "No stories yet"}
                     </Title>
 
                     <Text c="dimmed" size="sm" mt={6}>
-                        {search || statusFilter || typeFilter
+                        {search || statusFilter || typeFilter ||
+                            tagFilterIds.length > 0
                             ? "Try changing your search or filters."
                             : "Create the first story to begin building the colony archive."}
                     </Text>
 
-                    {!search && !statusFilter && !typeFilter && (
-                        <Button
-                            component="a"
-                            href="/stories/create"
-                            color="mesa"
-                            variant="light"
-                            leftSection={<Plus size={16} />}
-                            mt="md"
-                        >
-                            Create your first story
-                        </Button>
-                    )}
+                    {!search &&
+                        !statusFilter &&
+                        !typeFilter &&
+                        tagFilterIds.length === 0 && (
+                            <Button
+                                component="a"
+                                href="/stories/create"
+                                color="mesa"
+                                variant="light"
+                                leftSection={<Plus size={16} />}
+                                mt="md"
+                            >
+                                Create your first story
+                            </Button>
+                        )}
                 </div>
             )}
         </main>

@@ -170,7 +170,7 @@ export async function getStoryArchiveRecords(
                 "Story",
                 story.id,
                 story.title,
-                `/stories/${story.id}/edit`,
+                `/stories/${story.id}`,
                 null,
                 `${story.type} · ${story.status === "DRAFT" ? "Draft" : "Complete"}`,
             ),

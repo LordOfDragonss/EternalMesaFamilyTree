@@ -45,6 +45,7 @@ type StoryDetailsSectionProps = {
     startDate: StoryDateEndpoint;
     endDate: StoryDateEndpoint;
     tags: string[];
+    availableTags: string[];
     collections: string[];
     availableCollections: string[];
     onTitleChange: (value: string) => void;
@@ -70,6 +71,7 @@ export default function StoryDetailsSection({
     startDate,
     endDate,
     tags,
+    availableTags,
     collections,
     availableCollections,
     onTitleChange,
@@ -93,8 +95,8 @@ export default function StoryDetailsSection({
         dateType === "unknown"
             ? "Date unknown"
             : dateType === "range"
-              ? `${formatStoryDate(startDate)} – ${formatStoryDate(endDate)}`
-              : formatStoryDate(startDate);
+                ? `${formatStoryDate(startDate)} – ${formatStoryDate(endDate)}`
+                : formatStoryDate(startDate);
 
     async function createCollection() {
         const name = newCollectionName.trim();
@@ -274,9 +276,10 @@ export default function StoryDetailsSection({
                             description="Add tags to help categorize and find this story."
                             placeholder={
                                 tags.length === 0
-                                    ? "Type a tag and press Enter"
+                                    ? "Type a tag or select an existing one"
                                     : "Add another tag"
                             }
+                            data={availableTags}
                             value={tags}
                             onChange={onTagsChange}
                             splitChars={[","]}

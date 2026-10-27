@@ -4,8 +4,17 @@ import { getReferenceMaterialLibrary } from "../reference-materials";
 import StoryEditor from "../StoryEditor";
 
 export default async function CreateStoryPage() {
-    const [collections, archiveRecords, references] = await Promise.all([
+    const [
+        collections,
+        tags,
+        archiveRecords,
+        references,
+    ] = await Promise.all([
         prisma.storyCollection.findMany({
+            select: { name: true },
+            orderBy: { name: "asc" },
+        }),
+        prisma.tag.findMany({
             select: { name: true },
             orderBy: { name: "asc" },
         }),
@@ -19,6 +28,7 @@ export default async function CreateStoryPage() {
             initialAvailableCollections={collections.map(
                 (collection) => collection.name,
             )}
+            initialAvailableTags={tags.map((tag) => tag.name)}
             availableArchiveRecords={archiveRecords}
             initialAvailableReferences={references}
         />

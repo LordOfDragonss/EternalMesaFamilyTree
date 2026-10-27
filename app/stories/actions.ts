@@ -680,6 +680,8 @@ export async function createStoryCollection(
         });
 
         revalidatePath("/stories/create");
+        revalidatePath("/stories");
+        revalidatePath("/stories/collections");
 
         return { ok: true, name: collection.name };
     } catch (error) {
@@ -973,6 +975,7 @@ export async function saveStory(
         });
 
         revalidatePath(`/stories/${storyId}/edit`);
+        revalidateStoryTagViews();
 
         return { ok: true, id: storyId };
     } catch (error) {
@@ -993,6 +996,545 @@ export async function saveStory(
         return {
             ok: false,
             error: "The story could not be saved. Check the server logs for details.",
+        };
+    }
+}
+export type StoryTagManagementResult =
+    | { ok: true; tagName: string }
+    | { ok: false; error: string };
+
+function revalidateStoryTagViews() {
+    revalidatePath("/stories");
+    revalidatePath("/stories/tags");
+    revalidatePath("/stories/create");
+}
+
+export async function renameStoryTag(
+    tagId: number,
+    inputName: string,
+): Promise<StoryTagManagementResult> {
+    if (!Number.isSafeInteger(tagId) || tagId < 1) {
+        return { ok: false, error: "The tag ID is invalid." };
+    }
+
+    if (typeof inputName !== "string" || !inputName.trim()) {
+        return { ok: false, error: "Enter a tag name." };
+    }
+
+    const name = inputName.trim();
+
+    try {
+        const existingTag = await prisma.tag.findUnique({
+            where: { id: tagId },
+            select: { id: true },
+        });
+
+        if (!existingTag) {
+            return { ok: false, error: "This tag no longer exists." };
+        }
+
+        const duplicate = await prisma.tag.findFirst({
+            where: {
+                id: { not: tagId },
+                name: {
+                    equals: name,
+                    mode: "insensitive",
+                },
+            },
+            select: { id: true },
+        });
+
+        if (duplicate) {
+            return {
+                ok: false,
+                error: "A tag with that name already exists. Merge the tags instead.",
+            };
+        }
+
+        const tag = await prisma.tag.update({
+            where: { id: tagId },
+            data: { name },
+            select: { name: true },
+        });
+
+        revalidateStoryTagViews();
+
+        return { ok: true, tagName: tag.name };
+    } catch (error) {
+        console.error("Failed to rename story tag:", error);
+
+        return {
+            ok: false,
+            error: "The tag could not be renamed.",
+        };
+    }
+}
+
+export async function deleteStoryTag(
+    tagId: number,
+): Promise<StoryTagManagementResult> {
+    if (!Number.isSafeInteger(tagId) || tagId < 1) {
+        return { ok: false, error: "The tag ID is invalid." };
+    }
+
+    try {
+        const tag = await prisma.tag.findUnique({
+            where: { id: tagId },
+            select: { name: true },
+        });
+
+        if (!tag) {
+            return { ok: false, error: "This tag no longer exists." };
+        }
+
+        // The StoryTag relation cascades, so stories themselves remain intact.
+        await prisma.tag.delete({
+            where: { id: tagId },
+        });
+
+        revalidateStoryTagViews();
+
+        return { ok: true, tagName: tag.name };
+    } catch (error) {
+        console.error("Failed to delete story tag:", error);
+
+        return {
+            ok: false,
+            error: "The tag could not be removed.",
+        };
+    }
+}
+
+export async function mergeStoryTags(
+    sourceTagId: number,
+    targetTagId: number,
+): Promise<StoryTagManagementResult> {
+    if (
+        !Number.isSafeInteger(sourceTagId) ||
+        sourceTagId < 1 ||
+        !Number.isSafeInteger(targetTagId) ||
+        targetTagId < 1
+    ) {
+        return { ok: false, error: "One of the tag IDs is invalid." };
+    }
+
+    if (sourceTagId === targetTagId) {
+        return { ok: false, error: "Choose two different tags." };
+    }
+
+    try {
+        const targetName = await prisma.$transaction(async (tx) => {
+            const source = await tx.tag.findUnique({
+                where: { id: sourceTagId },
+                select: { id: true },
+            });
+
+            const target = await tx.tag.findUnique({
+                where: { id: targetTagId },
+                select: { id: true, name: true },
+            });
+
+            if (!source || !target) {
+                throw new Error("One or both selected tags no longer exist.");
+            }
+
+            const sourceAssignments = await tx.storyTag.findMany({
+                where: { tagId: sourceTagId },
+                select: { storyId: true },
+            });
+
+            if (sourceAssignments.length > 0) {
+                await tx.storyTag.createMany({
+                    data: sourceAssignments.map(({ storyId }) => ({
+                        storyId,
+                        tagId: targetTagId,
+                    })),
+                    skipDuplicates: true,
+                });
+            }
+
+            // Removes the source tag and its old assignments.
+            // The target tag and all stories are preserved.
+            await tx.tag.delete({
+                where: { id: sourceTagId },
+            });
+
+            return target.name;
+        });
+
+        revalidateStoryTagViews();
+
+        return { ok: true, tagName: targetName };
+    } catch (error) {
+        console.error("Failed to merge story tags:", error);
+
+        return {
+            ok: false,
+            error:
+                error instanceof Error &&
+                    error.message.includes("no longer exist")
+                    ? error.message
+                    : "The tags could not be merged.",
+        };
+    }
+}
+export type StoryCollectionManagementResult =
+    | { ok: true; collectionName: string }
+    | { ok: false; error: string };
+
+function revalidateStoryCollectionViews(collectionId?: number) {
+    revalidatePath("/stories");
+    revalidatePath("/stories/collections");
+    revalidatePath("/stories/create");
+    revalidatePath("/stories/[id]/edit", "page");
+
+    if (collectionId !== undefined) {
+        revalidatePath(`/stories/collections/${collectionId}`);
+    }
+}
+
+export async function renameStoryCollection(
+    collectionId: number,
+    inputName: string,
+): Promise<StoryCollectionManagementResult> {
+    if (!Number.isSafeInteger(collectionId) || collectionId < 1) {
+        return { ok: false, error: "The collection ID is invalid." };
+    }
+
+    if (typeof inputName !== "string" || !inputName.trim()) {
+        return { ok: false, error: "Enter a collection name." };
+    }
+
+    const name = inputName.trim();
+
+    try {
+        const current = await prisma.storyCollection.findUnique({
+            where: { id: collectionId },
+            select: { name: true },
+        });
+
+        if (!current) {
+            return {
+                ok: false,
+                error: "This collection no longer exists.",
+            };
+        }
+
+        const duplicate = await prisma.storyCollection.findFirst({
+            where: {
+                id: { not: collectionId },
+                name: {
+                    equals: name,
+                    mode: "insensitive",
+                },
+            },
+            select: { id: true },
+        });
+
+        if (duplicate) {
+            return {
+                ok: false,
+                error: "A collection with that name already exists.",
+            };
+        }
+
+        const collection = await prisma.storyCollection.update({
+            where: { id: collectionId },
+            data: { name },
+            select: { name: true },
+        });
+
+        revalidateStoryCollectionViews(collectionId);
+
+        return {
+            ok: true,
+            collectionName: collection.name,
+        };
+    } catch (error) {
+        console.error("Failed to rename story collection:", error);
+
+        return {
+            ok: false,
+            error: "The collection could not be renamed.",
+        };
+    }
+}
+
+export async function deleteStoryCollection(
+    collectionId: number,
+): Promise<StoryCollectionManagementResult> {
+    if (!Number.isSafeInteger(collectionId) || collectionId < 1) {
+        return { ok: false, error: "The collection ID is invalid." };
+    }
+
+    try {
+        const deleted = await prisma.$transaction(async (tx) => {
+            const collection = await tx.storyCollection.findUnique({
+                where: { id: collectionId },
+                select: {
+                    name: true,
+                    stories: {
+                        select: { storyId: true },
+                    },
+                },
+            });
+
+            if (!collection) {
+                throw new Error("COLLECTION_NOT_FOUND");
+            }
+
+            await tx.storyCollection.delete({
+                where: { id: collectionId },
+            });
+
+            return {
+                name: collection.name,
+                storyIds: collection.stories.map(
+                    ({ storyId }) => storyId,
+                ),
+            };
+        });
+
+        revalidateStoryCollectionViews(collectionId);
+
+        for (const storyId of deleted.storyIds) {
+            revalidatePath(`/stories/${storyId}`);
+            revalidatePath(`/stories/${storyId}/edit`);
+        }
+
+        return {
+            ok: true,
+            collectionName: deleted.name,
+        };
+    } catch (error) {
+        console.error("Failed to delete story collection:", error);
+
+        return {
+            ok: false,
+            error:
+                error instanceof Error &&
+                    error.message === "COLLECTION_NOT_FOUND"
+                    ? "This collection no longer exists."
+                    : "The collection could not be deleted.",
+        };
+    }
+}
+
+export async function updateStoryCollectionMembers(
+    collectionId: number,
+    storyIds: number[],
+): Promise<StoryCollectionManagementResult> {
+    if (!Number.isSafeInteger(collectionId) || collectionId < 1) {
+        return { ok: false, error: "The collection ID is invalid." };
+    }
+
+    if (
+        !Array.isArray(storyIds) ||
+        !storyIds.every(
+            (id) => Number.isSafeInteger(id) && id > 0,
+        )
+    ) {
+        return { ok: false, error: "The selected stories are invalid." };
+    }
+
+    const uniqueStoryIds = [...new Set(storyIds)];
+
+    try {
+        const updated = await prisma.$transaction(async (tx) => {
+            const collection = await tx.storyCollection.findUnique({
+                where: { id: collectionId },
+                select: {
+                    name: true,
+                    stories: {
+                        select: { storyId: true },
+                    },
+                },
+            });
+
+            if (!collection) {
+                throw new Error("COLLECTION_NOT_FOUND");
+            }
+
+            if (uniqueStoryIds.length > 0) {
+                const existingStories = await tx.story.findMany({
+                    where: { id: { in: uniqueStoryIds } },
+                    select: { id: true },
+                });
+
+                if (existingStories.length !== uniqueStoryIds.length) {
+                    throw new Error("STORY_NOT_FOUND");
+                }
+            }
+
+            const previouslyAssignedIds = collection.stories.map(
+                ({ storyId }) => storyId,
+            );
+
+            // Replace this collection's memberships only.
+            // Other collections and the stories themselves remain intact.
+            await tx.storyCollectionMembership.deleteMany({
+                where: { collectionId },
+            });
+
+            if (uniqueStoryIds.length > 0) {
+                await tx.storyCollectionMembership.createMany({
+                    data: uniqueStoryIds.map((storyId) => ({
+                        collectionId,
+                        storyId,
+                    })),
+                    skipDuplicates: true,
+                });
+            }
+
+            return {
+                name: collection.name,
+                affectedStoryIds: [
+                    ...new Set([
+                        ...previouslyAssignedIds,
+                        ...uniqueStoryIds,
+                    ]),
+                ],
+            };
+        });
+
+        revalidateStoryCollectionViews(collectionId);
+
+        for (const storyId of updated.affectedStoryIds) {
+            revalidatePath(`/stories/${storyId}`);
+            revalidatePath(`/stories/${storyId}/edit`);
+        }
+
+        return {
+            ok: true,
+            collectionName: updated.name,
+        };
+    } catch (error) {
+        console.error("Failed to update story collection members:", error);
+
+        let message = "The collection's stories could not be updated.";
+
+        if (error instanceof Error) {
+            if (error.message === "COLLECTION_NOT_FOUND") {
+                message = "This collection no longer exists.";
+            } else if (error.message === "STORY_NOT_FOUND") {
+                message = "One or more selected stories no longer exist.";
+            }
+        }
+
+        return { ok: false, error: message };
+    }
+}
+
+export async function addStoryToCollection(
+    collectionId: number,
+    storyId: number,
+): Promise<StoryCollectionManagementResult> {
+    if (
+        !Number.isSafeInteger(collectionId) ||
+        collectionId < 1 ||
+        !Number.isSafeInteger(storyId) ||
+        storyId < 1
+    ) {
+        return { ok: false, error: "The collection or story ID is invalid." };
+    }
+
+    try {
+        const collectionName = await prisma.$transaction(async (tx) => {
+            const collection = await tx.storyCollection.findUnique({
+                where: { id: collectionId },
+                select: { name: true },
+            });
+
+            if (!collection) {
+                throw new Error("COLLECTION_NOT_FOUND");
+            }
+
+            const story = await tx.story.findUnique({
+                where: { id: storyId },
+                select: { id: true },
+            });
+
+            if (!story) {
+                throw new Error("STORY_NOT_FOUND");
+            }
+
+            await tx.storyCollectionMembership.createMany({
+                data: [{ collectionId, storyId }],
+                skipDuplicates: true,
+            });
+
+            return collection.name;
+        });
+
+        revalidateStoryCollectionViews(collectionId);
+        revalidatePath(`/stories/${storyId}`);
+        revalidatePath(`/stories/${storyId}/edit`);
+
+        return { ok: true, collectionName };
+    } catch (error) {
+        console.error("Failed to add story to collection:", error);
+
+        return {
+            ok: false,
+            error:
+                error instanceof Error &&
+                error.message === "COLLECTION_NOT_FOUND"
+                    ? "This collection no longer exists."
+                    : error instanceof Error &&
+                        error.message === "STORY_NOT_FOUND"
+                      ? "This story no longer exists."
+                      : "The story could not be added to the collection.",
+        };
+    }
+}
+
+export async function removeStoryFromCollection(
+    collectionId: number,
+    storyId: number,
+): Promise<StoryCollectionManagementResult> {
+    if (
+        !Number.isSafeInteger(collectionId) ||
+        collectionId < 1 ||
+        !Number.isSafeInteger(storyId) ||
+        storyId < 1
+    ) {
+        return { ok: false, error: "The collection or story ID is invalid." };
+    }
+
+    try {
+        const collection = await prisma.storyCollection.findUnique({
+            where: { id: collectionId },
+            select: { name: true },
+        });
+
+        if (!collection) {
+            return {
+                ok: false,
+                error: "This collection no longer exists.",
+            };
+        }
+
+        await prisma.storyCollectionMembership.deleteMany({
+            where: {
+                collectionId,
+                storyId,
+            },
+        });
+
+        revalidateStoryCollectionViews(collectionId);
+        revalidatePath(`/stories/${storyId}`);
+        revalidatePath(`/stories/${storyId}/edit`);
+
+        return {
+            ok: true,
+            collectionName: collection.name,
+        };
+    } catch (error) {
+        console.error("Failed to remove story from collection:", error);
+
+        return {
+            ok: false,
+            error: "The story could not be removed from the collection.",
         };
     }
 }

@@ -7,7 +7,7 @@ import {
     Title,
     Tooltip,
 } from "@mantine/core";
-import { FolderOpen, Pencil, Plus, Tag } from "lucide-react";
+import { FolderOpen, LibraryBig, Pencil, Plus, Tag } from "lucide-react";
 
 import { prisma } from "@/lib/prisma";
 import {
@@ -308,6 +308,19 @@ export default async function StoriesPage({
                             aria-label="Manage story collections"
                         >
                             <FolderOpen size={20} />
+                        </ActionIcon>
+                    </Tooltip>
+
+                    <Tooltip label="Manage reference library">
+                        <ActionIcon
+                            component="a"
+                            href="/stories/references"
+                            size="lg"
+                            variant="filled"
+                            color="mesa"
+                            aria-label="Manage reference library"
+                        >
+                            <LibraryBig size={20} />
                         </ActionIcon>
                     </Tooltip>
 

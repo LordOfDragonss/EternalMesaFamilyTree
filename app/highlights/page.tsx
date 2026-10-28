@@ -12,15 +12,28 @@ import {
 
 import Image from "next/image";
 
+import { prisma } from "@/lib/prisma";
 import { getHighlightsData } from "./highlights-data";
 import HighlightSection from "./components/HighlightSection";
 import FeaturedHighlights from "./components/FeaturedHighlights";
 import ActivityChart from "./components/ActivityChart";
-import styles from "./highlights.module.css";
 import HighlightUpdates from "./components/HighlightUpdates";
+import styles from "./highlights.module.css";
 
 export default async function HighlightsPage() {
-    const data = await getHighlightsData();
+    const [
+        data,
+        groups,
+        locations,
+        stories,
+        collections,
+    ] = await Promise.all([
+        getHighlightsData(),
+        prisma.group.count(),
+        prisma.location.count(),
+        prisma.story.count(),
+        prisma.storyCollection.count(),
+    ]);
 
     const overview = [
         { label: "Recorded colonists", value: data.totals.colonists },
@@ -28,6 +41,10 @@ export default async function HighlightsPage() {
         { label: "Deceased", value: data.totals.dead },
         { label: "Legacies", value: data.totals.legacies },
         { label: "Relics", value: data.totals.relics },
+        { label: "Groups", value: groups },
+        { label: "Locations", value: locations },
+        { label: "Stories", value: stories },
+        { label: "Collections", value: collections },
     ];
 
     return (

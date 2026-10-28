@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getColonyDiscoveries } from "./highlights-discoveries";
+import { getArchiveHighlightSections } from "./highlights-archive";
 
 const MONTHS = ["Aprimay", "Jugust", "Septober", "Decembary"];
 
@@ -1740,6 +1741,7 @@ export async function getHighlightsData() {
         ...youngestMemberRecords,
         ...latestDeathRecords,
     ];
+    const archiveSections = await getArchiveHighlightSections();
 
     const sections: HighlightSectionData[] = [
         {
@@ -1784,6 +1786,7 @@ export async function getHighlightsData() {
             description: "The relics whose ownership histories stretch the furthest.",
             records: relicRecords,
         },
+        ...archiveSections,
         {
             id: "firsts",
             title: "Firsts",
@@ -1797,6 +1800,7 @@ export async function getHighlightsData() {
                 "The youngest recorded members and most recent deaths in each legacy.",
             records: lastsRecords,
         },
+
     ];
 
     const [featured, updates] = await Promise.all([

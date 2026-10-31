@@ -27,6 +27,7 @@ import BedReorderControls from "./BedReorderControls";
 type DoubleBedsPageProps = {
     searchParams: Promise<{
         location?: string;
+        search?: string;
     }>;
 };
 
@@ -44,6 +45,8 @@ export default async function DoubleBedsPage({
 }: DoubleBedsPageProps) {
     const params = await searchParams;
     const selectedLocation = params.location ?? "";
+    const search = params.search ?? "";
+
 
     const [locations, livingColonists, partnerships] = await Promise.all([
         prisma.location.findMany({
@@ -119,12 +122,18 @@ export default async function DoubleBedsPage({
         }),
     ]);
 
-    const filteredLocations = selectedLocation
-        ? locations.filter(
-            (location) =>
-                String(location.id) === selectedLocation
+    const filteredLocations = locations
+        .filter((location) =>
+            selectedLocation
+                ? String(location.id) === selectedLocation
+                : true
         )
-        : locations;
+        .map((location) => ({
+            ...location,
+            doubleBeds: location.doubleBeds.filter((bed) =>
+                bed.name?.toLowerCase().includes(search.toLowerCase())
+            ),
+        }));
 
     const totalBeds = filteredLocations.reduce(
         (total, location) =>
@@ -204,6 +213,7 @@ export default async function DoubleBedsPage({
 
             <BedFilters
                 initialLocation={selectedLocation}
+                initialSearch={search}
                 locations={locationOptions}
             />
 

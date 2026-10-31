@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 
 import { minio, MINIO_BUCKET } from "@/lib/minio";
 import { prisma } from "@/lib/prisma";
+import { getPublicUrl } from "@/lib/getPublicUrl";
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 
@@ -23,6 +24,23 @@ type Props = {
         id: string;
     }>;
 };
+function getRedirectOrigin(request: Request) {
+    const forwardedHost =
+        request.headers.get("x-forwarded-host");
+
+    const forwardedProto =
+        request.headers.get("x-forwarded-proto");
+
+    if (forwardedHost) {
+        const protocol =
+            forwardedProto ??
+            new URL(request.url).protocol.replace(":", "");
+
+        return `${protocol}://${forwardedHost}`;
+    }
+
+    return new URL(request.url).origin;
+}
 
 export async function POST(
     request: Request,
@@ -104,7 +122,7 @@ export async function POST(
 
         const screenshot =
             screenshotValue instanceof File &&
-            screenshotValue.size > 0
+                screenshotValue.size > 0
                 ? screenshotValue
                 : null;
 
@@ -224,7 +242,7 @@ export async function POST(
         return NextResponse.redirect(
             new URL(
                 `/locations/beds?location=${locationId}`,
-                request.url
+                getPublicUrl(request)
             ),
             303
         );

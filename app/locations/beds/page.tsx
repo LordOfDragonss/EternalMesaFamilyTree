@@ -131,7 +131,8 @@ export default async function DoubleBedsPage({
         .map((location) => ({
             ...location,
             doubleBeds: location.doubleBeds.filter((bed) =>
-                bed.name?.toLowerCase().includes(search.toLowerCase())
+                !search.trim() ||
+                bed.name?.toLowerCase().includes(search.trim().toLowerCase())
             ),
         }));
 

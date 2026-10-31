@@ -1,15 +1,22 @@
 "use client";
 
 import {
+    Group,
     Select,
+    Tooltip,
     type SelectProps,
 } from "@mantine/core";
+import { Blend, Heart } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export type LegacyColorColonistOption = {
     value: string;
     label: string;
     color: string | null;
+    partnership?: {
+        type: "Lover" | "Married";
+        partnerName?: string;
+    } | null;
 };
 
 type Props = Omit<SelectProps, "data" | "renderOption"> & {
@@ -36,8 +43,7 @@ export default function LegacyColorColonistSelect({
     }, [value]);
 
     const selectedColonist = data.find(
-        (colonist) =>
-            colonist.value === selectedValue
+        (colonist) => colonist.value === selectedValue
     );
 
     const selectedColor =
@@ -63,8 +69,7 @@ export default function LegacyColorColonistSelect({
                 return {
                     ...baseStyles,
                     input: {
-                        ...(typeof baseStyles?.input ===
-                        "object"
+                        ...(typeof baseStyles?.input === "object"
                             ? baseStyles.input
                             : {}),
                         color: selectedColor,
@@ -77,16 +82,53 @@ export default function LegacyColorColonistSelect({
                         colonist.value === option.value
                 );
 
+                const partnership = colonist?.partnership;
+
                 return (
-                    <span
-                        style={{
-                            color:
-                                colonist?.color ??
-                                "#a0a0a0",
-                        }}
+                    <Group
+                        justify="space-between"
+                        wrap="nowrap"
+                        gap="sm"
+                        w="100%"
                     >
-                        {option.label}
-                    </span>
+                        <span
+                            style={{
+                                color:
+                                    colonist?.color ?? "#a0a0a0",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                            }}
+                        >
+                            {option.label}
+                        </span>
+
+                        {partnership && (
+                            <Tooltip
+                                label={
+                                    partnership.partnerName
+                                        ? `${partnership.type} of ${partnership.partnerName}`
+                                        : `Current ${partnership.type.toLowerCase()}`
+                                }
+                                position="right"
+                                withArrow
+                            >
+                                {partnership.type === "Lover" ? (
+                                    <Heart
+                                        size={15}
+                                        color="#D66B9A"
+                                        fill="#D66B9A"
+                                        style={{ flexShrink: 0 }}
+                                    />
+                                ) : (
+                                    <Blend
+                                        size={15}
+                                        color="#D4A84F"
+                                        style={{ flexShrink: 0 }}
+                                    />
+                                )}
+                            </Tooltip>
+                        )}
+                    </Group>
                 );
             }}
         />

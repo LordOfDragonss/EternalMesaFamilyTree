@@ -112,7 +112,8 @@ model Colonist {
   colonistSkills ColonistSkill[]
   colonistTraits ColonistTrait[]
 
-  locations Location[]
+  locations      Location[]
+  bedAssignments DoubleBedAssignment[]
 
   ownedRelics     Relic[]          @relation("CurrentRelicOwner")
   relicOwnerships RelicOwnership[]
@@ -308,9 +309,10 @@ model Location {
   images        LocationImage[]
   landmarks     LocationLandmark[]
 
-  colonists Colonist[]
-  legacies  Legacy[]
-  relics    Relic[]
+  colonists  Colonist[]
+  legacies   Legacy[]
+  relics     Relic[]
+  doubleBeds DoubleBed[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -497,11 +499,11 @@ model StoryTag {
 }
 
 model StoryCollection {
-  id        Int                       @id @default(autoincrement())
-  name      String                    @unique
+  id        Int                         @id @default(autoincrement())
+  name      String                      @unique
   stories   StoryCollectionMembership[]
-  createdAt DateTime                  @default(now())
-  updatedAt DateTime                  @updatedAt
+  createdAt DateTime                    @default(now())
+  updatedAt DateTime                    @updatedAt
 }
 
 model StoryCollectionMembership {
@@ -531,7 +533,7 @@ model StoryEditorialComment {
 }
 
 model ReferenceMaterial {
-  id    Int                  @id @default(autoincrement())
+  id    Int                   @id @default(autoincrement())
   title String
   kind  ReferenceMaterialType
 
@@ -568,8 +570,8 @@ model StoryReference {
 }
 
 model StoredAsset {
-  id               Int      @id @default(autoincrement())
-  objectKey        String   @unique
+  id               Int     @id @default(autoincrement())
+  objectKey        String  @unique
   originalFileName String
   mimeType         String?
   sizeBytes        Int?
@@ -675,4 +677,47 @@ model StoryRelatedStory {
 
   @@id([storyId, relatedStoryId])
   @@index([relatedStoryId])
+}
+
+// -----------------------------------------------------------------------------
+// Double Bed Manager
+// -----------------------------------------------------------------------------
+
+model DoubleBed {
+  id Int @id @default(autoincrement())
+
+  name          String?
+  screenshotURL String?
+  notes         String? @db.Text
+
+  // Required playable-map location.
+  locationId Int
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  // Ordering within the location.
+  order Int @default(0)
+
+  // Current and historical occupants.
+  assignments DoubleBedAssignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([locationId, order])
+}
+
+model DoubleBedAssignment {
+  id Int @id @default(autoincrement())
+
+  bedId      Int
+  colonistId Int
+
+  bed      DoubleBed @relation(fields: [bedId], references: [id], onDelete: Cascade)
+  colonist Colonist  @relation(fields: [colonistId], references: [id], onDelete: Cascade)
+
+  assignedAt DateTime  @default(now())
+  vacatedAt  DateTime?
+
+  @@index([bedId, vacatedAt])
+  @@index([colonistId, vacatedAt])
 }

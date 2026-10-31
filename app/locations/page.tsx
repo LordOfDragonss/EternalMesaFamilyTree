@@ -1,3 +1,4 @@
+
 import {
     ActionIcon,
     Card,
@@ -7,7 +8,7 @@ import {
     Title,
     Tooltip,
 } from "@mantine/core";
-import { Pencil, Plus } from "lucide-react";
+import { BedDouble, Pencil, Plus } from "lucide-react";
 
 import { prisma } from "@/lib/prisma";
 import DeleteButton from "@/app/components/DeleteButton";
@@ -38,18 +39,33 @@ export default async function LocationsPage() {
                     </Text>
                 </div>
 
-                <Tooltip label="Add location">
-                    <ActionIcon
-                        component="a"
-                        href="/locations/create"
-                        size="lg"
-                        variant="filled"
-                        color="mesa"
-                        aria-label="Add location"
-                    >
-                        <Plus size={20} />
-                    </ActionIcon>
-                </Tooltip>
+                <Group gap="xs">
+                    <Tooltip label="Manage double beds">
+                        <ActionIcon
+                            component="a"
+                            href="/locations/beds"
+                            size="lg"
+                            variant="filled"
+                            color="mesa"
+                            aria-label="Manage double beds"
+                        >
+                            <BedDouble size={20} />
+                        </ActionIcon>
+                    </Tooltip>
+
+                    <Tooltip label="Add location">
+                        <ActionIcon
+                            component="a"
+                            href="/locations/create"
+                            size="lg"
+                            variant="filled"
+                            color="mesa"
+                            aria-label="Add location"
+                        >
+                            <Plus size={20} />
+                        </ActionIcon>
+                    </Tooltip>
+                </Group>
             </Group>
 
             <SimpleGrid

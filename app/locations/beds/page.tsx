@@ -24,12 +24,21 @@ import DeleteButton from "@/app/components/DeleteButton";
 import LegacyColorColonistSelect from "@/app/components/LegacyColorColonistSelect";
 import BedReorderControls from "./BedReorderControls";
 import CouplesOverview from "./CouplesOverview";
+import EmptyBedOverview from "./EmptyBedOverview";
 
 type DoubleBedsPageProps = {
     searchParams: Promise<{
         location?: string;
         search?: string;
     }>;
+};
+type PotentialBedOption = {
+    bedId: number;
+    bedName: string;
+    locationName: string;
+    availability: "empty" | "partner" | "move-occupant";
+    occupantId: number | null;
+    occupantName: string | null;
 };
 
 function getColonistName(colonist: {
@@ -190,6 +199,22 @@ export default async function DoubleBedsPage({
         }
     }
 
+    const livingColonistIds = new Set(
+        livingColonists.map((colonist) => colonist.id)
+    );
+
+    const partneredColonistIds = new Set<number>();
+
+    for (const partnership of partnerships) {
+        if (
+            livingColonistIds.has(partnership.partnerAId) &&
+            livingColonistIds.has(partnership.partnerBId)
+        ) {
+            partneredColonistIds.add(partnership.partnerAId);
+            partneredColonistIds.add(partnership.partnerBId);
+        }
+    }
+
     const couplesWithoutSharedBed = partnerships.flatMap(
         (partnership) => {
             const partnerA = livingColonistsById.get(
@@ -208,7 +233,7 @@ export default async function DoubleBedsPage({
             const bedA = activeBedByColonist.get(partnerA.id);
             const bedB = activeBedByColonist.get(partnerB.id);
 
-            // Couples sharing the same bed don't need to appear.
+            // Couples already sharing a bed don't need to appear.
             if (
                 bedA &&
                 bedB &&
@@ -217,6 +242,65 @@ export default async function DoubleBedsPage({
                 return [];
             }
 
+            // Find beds that this couple could potentially use.
+            const potentialBeds = locations.flatMap<PotentialBedOption>((location) =>
+                location.doubleBeds.flatMap<PotentialBedOption>((bed) => {
+                    const occupants = bed.assignments;
+
+                    // Full beds aren't available.
+                    if (occupants.length >= 2) {
+                        return [];
+                    }
+
+                    // Empty beds are available.
+                    if (occupants.length === 0) {
+                        return [{
+                            bedId: bed.id,
+
+                            bedName: bed.name?.trim() || "Unnamed bed",
+                            locationName: location.name,
+                            availability: "empty" as const,
+                            occupantId: null,
+                            occupantName: null,
+                        }];
+                    }
+
+                    const occupant = occupants[0].colonist;
+
+                    // A bed occupied by one of the couple can
+                    // accommodate the other partner.
+                    if (
+                        occupant.id === partnerA.id ||
+                        occupant.id === partnerB.id
+                    ) {
+                        return [{
+                            bedId: bed.id,
+                            bedName: bed.name?.trim() || "Unnamed bed",
+                            locationName: location.name,
+                            availability: "partner" as const,
+                            occupantId: occupant.id,
+                            occupantName: getColonistName(occupant),
+                        }];
+                    }
+
+                    // Don't suggest beds occupied by someone
+                    // who currently has a partner.
+                    if (partneredColonistIds.has(occupant.id)) {
+                        return [];
+                    }
+
+                    // An unrelated single occupant could be moved.
+                    return [{
+                        bedId: bed.id,
+                        bedName: bed.name?.trim() || "Unnamed bed",
+                        locationName: location.name,
+                        availability: "move-occupant" as const,
+                        occupantId: occupant.id,
+                        occupantName: getColonistName(occupant),
+                    }];
+                })
+            );
+
             return [{
                 id: `${partnerA.id}-${partnerB.id}`,
                 type: partnership.type,
@@ -224,16 +308,10 @@ export default async function DoubleBedsPage({
                 partnerB,
                 bedA,
                 bedB,
+                potentialBeds,
             }];
         }
     );
-
-    const partneredColonistIds = new Set<number>();
-
-    for (const partnership of partnerships) {
-        partneredColonistIds.add(partnership.partnerAId);
-        partneredColonistIds.add(partnership.partnerBId);
-    }
 
     return (
         <main style={{ padding: "2rem" }}>
@@ -295,9 +373,21 @@ export default async function DoubleBedsPage({
                     ? "location"
                     : "locations"}
             </Text>
-            <CouplesOverview
-                couples={couplesWithoutSharedBed}
-            />
+            <Stack gap="xl" mt="xl">
+                <EmptyBedOverview
+                    locations={locations}
+                    livingColonists={livingColonists}
+                    partnerships={partnerships}
+                    assignedColonistIds={Array.from(assignedColonistIds)}
+                />
+
+                <CouplesOverview
+                    couples={couplesWithoutSharedBed}
+                    livingColonists={livingColonists}
+                    assignedColonistIds={Array.from(assignedColonistIds)}
+                    partnerships={partnerships}
+                />
+            </Stack>
 
             {filteredLocations.length > 0 ? (
                 <Stack gap="xl" mt="xl">

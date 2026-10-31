@@ -57,6 +57,18 @@ export default async function DoubleBedsPage({
     const selectedLocation = params.location ?? "";
     const search = params.search ?? "";
 
+    await prisma.doubleBedAssignment.updateMany({
+        where: {
+            vacatedAt: null,
+            colonist: {
+                isDead: true,
+            },
+        },
+        data: {
+            vacatedAt: new Date(),
+        },
+    });
+
 
     const [locations, livingColonists, partnerships] = await Promise.all([
         prisma.location.findMany({

@@ -23,6 +23,7 @@ import BedFilters from "./BedFilters";
 import DeleteButton from "@/app/components/DeleteButton";
 import LegacyColorColonistSelect from "@/app/components/LegacyColorColonistSelect";
 import BedReorderControls from "./BedReorderControls";
+import CouplesOverview from "./CouplesOverview";
 
 type DoubleBedsPageProps = {
     searchParams: Promise<{
@@ -158,6 +159,74 @@ export default async function DoubleBedsPage({
             )
         )
     );
+    const livingColonistsById = new Map(
+        livingColonists.map((colonist) => [
+            colonist.id,
+            colonist,
+        ])
+    );
+
+    const activeBedByColonist = new Map<
+        number,
+        {
+            bedId: number;
+            bedName: string;
+            locationName: string;
+        }
+    >();
+
+    for (const location of locations) {
+        for (const bed of location.doubleBeds) {
+            for (const assignment of bed.assignments) {
+                activeBedByColonist.set(
+                    assignment.colonistId,
+                    {
+                        bedId: bed.id,
+                        bedName: bed.name?.trim() || "Unnamed bed",
+                        locationName: location.name,
+                    }
+                );
+            }
+        }
+    }
+
+    const couplesWithoutSharedBed = partnerships.flatMap(
+        (partnership) => {
+            const partnerA = livingColonistsById.get(
+                partnership.partnerAId
+            );
+
+            const partnerB = livingColonistsById.get(
+                partnership.partnerBId
+            );
+
+            // Ignore relationships involving deceased colonists.
+            if (!partnerA || !partnerB) {
+                return [];
+            }
+
+            const bedA = activeBedByColonist.get(partnerA.id);
+            const bedB = activeBedByColonist.get(partnerB.id);
+
+            // Couples sharing the same bed don't need to appear.
+            if (
+                bedA &&
+                bedB &&
+                bedA.bedId === bedB.bedId
+            ) {
+                return [];
+            }
+
+            return [{
+                id: `${partnerA.id}-${partnerB.id}`,
+                type: partnership.type,
+                partnerA,
+                partnerB,
+                bedA,
+                bedB,
+            }];
+        }
+    );
 
     const partneredColonistIds = new Set<number>();
 
@@ -226,9 +295,12 @@ export default async function DoubleBedsPage({
                     ? "location"
                     : "locations"}
             </Text>
+            <CouplesOverview
+                couples={couplesWithoutSharedBed}
+            />
 
             {filteredLocations.length > 0 ? (
-                <Stack gap="xl">
+                <Stack gap="xl" mt="xl">
                     {filteredLocations.map((location) => (
                         <Card
                             key={location.id}

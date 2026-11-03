@@ -1,5 +1,5 @@
 import { ActionIcon, Group, Text, Title, Tooltip } from "@mantine/core";
-import { ArrowLeft, Pencil } from "lucide-react";
+import { ArrowLeft, HeartHandshake, Pencil } from "lucide-react";
 
 type ColonistHeaderProps = {
     colonist: {
@@ -20,8 +20,8 @@ export default function ColonistHeader({
     colonist,
 }: ColonistHeaderProps) {
     const fullName = `${colonist.firstName}${colonist.nickname
-            ? ` "${colonist.nickname}"`
-            : ""
+        ? ` "${colonist.nickname}"`
+        : ""
         } ${colonist.lastName}`;
 
     return (
@@ -99,6 +99,19 @@ export default function ColonistHeader({
                         aria-label="Back to colonists"
                     >
                         <ArrowLeft size={20} />
+                    </ActionIcon>
+                </Tooltip>
+
+                <Tooltip label="Find compatible colonists">
+                    <ActionIcon
+                        component="a"
+                        href={`/colonists/compatibility?colonistId=${colonist.id}`}
+                        variant="subtle"
+                        color="mesa"
+                        size="lg"
+                        aria-label="Find compatible colonists"
+                    >
+                        <HeartHandshake size={20} />
                     </ActionIcon>
                 </Tooltip>
 

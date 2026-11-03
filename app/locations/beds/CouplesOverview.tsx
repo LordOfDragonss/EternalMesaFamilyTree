@@ -1,5 +1,8 @@
 
+"use client";
+
 import {
+    Accordion,
     Badge,
     Button,
     Card,
@@ -408,30 +411,50 @@ export default function CouplesOverview({
 
                                     <Divider color="#292929" />
 
-                                    <Group
-                                        justify="space-between"
-                                        align="center"
+                                    <Accordion
+                                        multiple
+                                        variant="separated"
                                     >
-                                        <Text
-                                            size="xs"
-                                            fw={600}
-                                            c="dimmed"
+                                        <Accordion.Item
+                                            value="potential-beds"
+                                            style={{
+                                                backgroundColor: "#111111",
+                                                border: "1px solid #292929",
+                                            }}
                                         >
-                                            Potential beds
-                                        </Text>
+                                            <Accordion.Control>
+                                                <Group
+                                                    justify="space-between"
+                                                    pr="sm"
+                                                >
+                                                    <Text
+                                                        size="xs"
+                                                        fw={600}
+                                                        c="dimmed"
+                                                    >
+                                                        Potential beds
+                                                    </Text>
 
-                                        <Text size="xs" c="dimmed">
-                                            {couple.potentialBeds.length}
-                                        </Text>
-                                    </Group>
+                                                    <Text
+                                                        size="xs"
+                                                        c="dimmed"
+                                                    >
+                                                        {couple.potentialBeds.length}
+                                                    </Text>
+                                                </Group>
+                                            </Accordion.Control>
 
-                                    <PotentialBedList
-                                        beds={couple.potentialBeds}
-                                        couple={couple}
-                                        livingColonists={livingColonists}
-                                        assignedColonistIds={assignedColonistIds}
-                                        partnerships={partnerships}
-                                    />
+                                            <Accordion.Panel>
+                                                <PotentialBedList
+                                                    beds={couple.potentialBeds}
+                                                    couple={couple}
+                                                    livingColonists={livingColonists}
+                                                    assignedColonistIds={assignedColonistIds}
+                                                    partnerships={partnerships}
+                                                />
+                                            </Accordion.Panel>
+                                        </Accordion.Item>
+                                    </Accordion>
                                 </Stack>
                             </Card>
                         );

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import {
+    Accordion,
     ActionIcon,
     Avatar,
     Badge,
@@ -579,6 +580,7 @@ export default function CompatibilityFinder({
                 </Text>
             </div>
 
+
             {/* Potential lover reservations */}
             <Card
                 shadow="sm"
@@ -588,141 +590,145 @@ export default function CompatibilityFinder({
                 bg="#161616"
                 style={{ borderColor: "#292929" }}
             >
-                <Stack gap="md">
-                    <Group justify="space-between" align="center">
-                        <div>
-                            <Title order={3}>Potential Lovers</Title>
-                            <Text c="dimmed" size="sm" mt={2}>
-                                Reserved pairings are excluded from the compatibility results until removed or made official.
-                            </Text>
-                        </div>
-                        <Badge color="orange" size="lg">
-                            {potentialLovers.length} {potentialLovers.length === 1 ? "reservation" : "reservations"}
-                        </Badge>
-                    </Group>
+                <Accordion variant="default">
+                    <Accordion.Item value="potential-lovers">
+                        <Accordion.Control>
+                            <Group justify="space-between" align="center" pr="sm">
+                                <div>
+                                    <Title order={3}>Potential Lovers</Title>
+                                    <Text c="dimmed" size="sm" mt={2}>
+                                        Reserved pairings are excluded from the compatibility results until removed or made official.
+                                    </Text>
+                                </div>
+                                <Badge color="orange" size="lg">
+                                    {potentialLovers.length} {potentialLovers.length === 1 ? "reservation" : "reservations"}
+                                </Badge>
+                            </Group>
+                        </Accordion.Control>
 
-                    {reservationError && (
-                        <Text c="red" size="sm">{reservationError}</Text>
-                    )}
+                        <Accordion.Panel>
+                            <Stack gap="md">
+                                {reservationError && (
+                                    <Text c="red" size="sm">{reservationError}</Text>
+                                )}
 
-                    {potentialLovers.length === 0 ? (
-                        <Text c="dimmed" size="sm">
-                            No potential lovers have been reserved.
-                        </Text>
-                    ) : (
-                        <Stack gap="sm">
-                            {potentialLovers.map((reservation) => (
-                                <Card
-                                    key={reservation.id}
-                                    padding="sm"
-                                    radius="md"
-                                    withBorder
-                                    bg="#1B1B1B"
-                                    style={{ borderColor: "#333333" }}
-                                >
-                                    <Group
-                                        align="center"
-                                        gap="md"
-                                        wrap="nowrap"
-                                    >
-                                        <SimpleGrid
-                                            cols={{ base: 1, sm: 2 }}
-                                            spacing="md"
-                                            style={{
-                                                flex: 1,
-                                                minWidth: 0,
-                                            }}
-                                        >
-                                            {[reservation.colonistA, reservation.colonistB].map((colonist) => (
-                                                <Card
-                                                    key={colonist.id}
-                                                    padding="sm"
-                                                    radius="md"
-                                                    withBorder
-                                                    bg="#222222"
-                                                    style={{
-                                                        borderColor: colonist.legacy?.color ?? "#3A3A3A",
-                                                        minWidth: 0,
-                                                    }}
+                                {potentialLovers.length === 0 ? (
+                                    <Text c="dimmed" size="sm">
+                                        No potential lovers have been reserved.
+                                    </Text>
+                                ) : (
+                                    <Stack gap="sm">
+                                        {potentialLovers.map((reservation) => (
+                                            <Card
+                                                key={reservation.id}
+                                                padding="sm"
+                                                radius="md"
+                                                withBorder
+                                                bg="#1B1B1B"
+                                                style={{ borderColor: "#333333" }}
+                                            >
+                                                <Group
+                                                    align="center"
+                                                    gap="md"
+                                                    wrap="nowrap"
                                                 >
-                                                    <Group gap="sm" wrap="nowrap" align="center">
-                                                        <Avatar
-                                                            src={colonist.imageURL ? `/api/images/${colonist.imageURL}` : null}
-                                                            size={48}
-                                                            radius="md"
-                                                        >
-                                                            {colonist.firstName.charAt(0).toUpperCase()}
-                                                        </Avatar>
-
-                                                        <Stack gap={3} style={{ minWidth: 0, flex: 1 }}>
-                                                            <Text
-                                                                component="a"
-                                                                href={`/colonists/${colonist.id}`}
-                                                                fw={600}
-                                                                size="sm"
+                                                    <SimpleGrid
+                                                        cols={{ base: 1, sm: 2 }}
+                                                        spacing="md"
+                                                        style={{
+                                                            flex: 1,
+                                                            minWidth: 0,
+                                                        }}
+                                                    >
+                                                        {[reservation.colonistA, reservation.colonistB].map((colonist) => (
+                                                            <Card
+                                                                key={colonist.id}
+                                                                padding="sm"
+                                                                radius="md"
+                                                                withBorder
+                                                                bg="#222222"
                                                                 style={{
-                                                                    color: colonist.legacy?.color ?? "inherit",
-                                                                    textDecoration: "none",
-                                                                    overflowWrap: "anywhere",
+                                                                    borderColor: colonist.legacy?.color ?? "#3A3A3A",
+                                                                    minWidth: 0,
                                                                 }}
                                                             >
-                                                                {getColonistName(colonist)}
-                                                            </Text>
+                                                                <Group gap="sm" wrap="nowrap" align="center">
+                                                                    <Avatar
+                                                                        src={colonist.imageURL ? `/api/images/${colonist.imageURL}` : null}
+                                                                        size={48}
+                                                                        radius="md"
+                                                                    >
+                                                                        {colonist.firstName.charAt(0).toUpperCase()}
+                                                                    </Avatar>
 
-                                                            {colonist.isDead && (
-                                                                <Badge color="gray" size="xs" w="fit-content">
-                                                                    Deceased
-                                                                </Badge>
-                                                            )}
+                                                                    <Stack gap={3} style={{ minWidth: 0, flex: 1 }}>
+                                                                        <Text
+                                                                            component="a"
+                                                                            href={`/colonists/${colonist.id}`}
+                                                                            fw={600}
+                                                                            size="sm"
+                                                                            style={{
+                                                                                color: colonist.legacy?.color ?? "inherit",
+                                                                                textDecoration: "none",
+                                                                                overflowWrap: "anywhere",
+                                                                            }}
+                                                                        >
+                                                                            {getColonistName(colonist)}
+                                                                        </Text>
 
-                                                            {colonist.title && !colonist.isDead && (
-                                                                <Text size="xs" c="dimmed">
-                                                                    {colonist.title}
-                                                                </Text>
-                                                            )}
-                                                        </Stack>
+                                                                        {colonist.isDead && (
+                                                                            <Badge color="gray" size="xs" w="fit-content">
+                                                                                Deceased
+                                                                            </Badge>
+                                                                        )}
+
+                                                                        {colonist.title && !colonist.isDead && (
+                                                                            <Text size="xs" c="dimmed">
+                                                                                {colonist.title}
+                                                                            </Text>
+                                                                        )}
+                                                                    </Stack>
+                                                                </Group>
+                                                            </Card>
+                                                        ))}
+                                                    </SimpleGrid>
+
+                                                    <Group gap={4} wrap="nowrap" justify="center">
+                                                        <Tooltip label="Set as Lovers">
+                                                            <ActionIcon
+                                                                variant="subtle"
+                                                                color="red"
+                                                                aria-label={`Set ${getColonistName(reservation.colonistA)} and ${getColonistName(reservation.colonistB)} as Lovers`}
+                                                                loading={reservationBusy === reservation.id}
+                                                                disabled={reservationBusy !== null}
+                                                                onClick={() => setPotentialLoversAsLovers(reservation)}
+                                                            >
+                                                                <Heart size={18} />
+                                                            </ActionIcon>
+                                                        </Tooltip>
+
+                                                        <Tooltip label="Remove reservation">
+                                                            <ActionIcon
+                                                                variant="subtle"
+                                                                color="gray"
+                                                                aria-label={`Remove reservation for ${getColonistName(reservation.colonistA)} and ${getColonistName(reservation.colonistB)}`}
+                                                                loading={reservationBusy === reservation.id}
+                                                                disabled={reservationBusy !== null}
+                                                                onClick={() => removePotentialLover(reservation.id)}
+                                                            >
+                                                                <CircleX size={18} />
+                                                            </ActionIcon>
+                                                        </Tooltip>
                                                     </Group>
-                                                </Card>
-                                            ))}
-                                        </SimpleGrid>
-
-                                        <Group
-                                            gap={4}
-                                            wrap="nowrap"
-                                            justify="center"
-                                        >
-                                            <Tooltip label="Set as Lovers">
-                                                <ActionIcon
-                                                    variant="subtle"
-                                                    color="red"
-                                                    aria-label={`Set ${getColonistName(reservation.colonistA)} and ${getColonistName(reservation.colonistB)} as Lovers`}
-                                                    loading={reservationBusy === reservation.id}
-                                                    disabled={reservationBusy !== null}
-                                                    onClick={() => setPotentialLoversAsLovers(reservation)}
-                                                >
-                                                    <Heart size={18} />
-                                                </ActionIcon>
-                                            </Tooltip>
-
-                                            <Tooltip label="Remove reservation">
-                                                <ActionIcon
-                                                    variant="subtle"
-                                                    color="gray"
-                                                    aria-label={`Remove reservation for ${getColonistName(reservation.colonistA)} and ${getColonistName(reservation.colonistB)}`}
-                                                    loading={reservationBusy === reservation.id}
-                                                    disabled={reservationBusy !== null}
-                                                    onClick={() => removePotentialLover(reservation.id)}
-                                                >
-                                                    <CircleX size={18} />
-                                                </ActionIcon>
-                                            </Tooltip>
-                                        </Group>
-                                    </Group>
-                                </Card>
-                            ))}
-                        </Stack>
-                    )}
-                </Stack>
+                                                </Group>
+                                            </Card>
+                                        ))}
+                                    </Stack>
+                                )}
+                            </Stack>
+                        </Accordion.Panel>
+                    </Accordion.Item>
+                </Accordion>
             </Card>
 
             {/* Selection */}

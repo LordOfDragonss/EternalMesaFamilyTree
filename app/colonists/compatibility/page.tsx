@@ -9,6 +9,7 @@ export default async function CompatibilityPage({
     searchParams: Promise<{ colonistId?: string }>;
 }) {
     const { colonistId } = await searchParams;
+
     const colonists = await prisma.colonist.findMany({
         orderBy: [
             { lastName: "asc" },
@@ -132,8 +133,7 @@ export default async function CompatibilityPage({
 
             ancestors.set(current.id, current.generation);
 
-            const grandparents =
-                parentMap.get(current.id) ?? [];
+            const grandparents = parentMap.get(current.id) ?? [];
 
             for (const parentId of grandparents) {
                 queue.push({
@@ -184,6 +184,57 @@ export default async function CompatibilityPage({
         ancestors: getAncestors(colonist.id),
     }));
 
+    // Load reservations separately so they remain visible even if
+    // one of the reserved colonists has since died.
+    const reservations = await prisma.potentialLover.findMany({
+        orderBy: {
+            createdAt: "asc",
+        },
+        select: {
+            id: true,
+            createdAt: true,
+            colonistA: {
+                select: {
+                    id: true,
+                    firstName: true,
+                    nickname: true,
+                    lastName: true,
+                    title: true,
+                    imageURL: true,
+                    isDead: true,
+                    legacy: {
+                        select: {
+                            name: true,
+                            color: true,
+                        },
+                    },
+                },
+            },
+            colonistB: {
+                select: {
+                    id: true,
+                    firstName: true,
+                    nickname: true,
+                    lastName: true,
+                    title: true,
+                    imageURL: true,
+                    isDead: true,
+                    legacy: {
+                        select: {
+                            name: true,
+                            color: true,
+                        },
+                    },
+                },
+            },
+        },
+    });
+
+    const potentialLovers = reservations.map((reservation) => ({
+        ...reservation,
+        createdAt: reservation.createdAt.toISOString(),
+    }));
+
     return (
         <main
             style={{
@@ -196,6 +247,7 @@ export default async function CompatibilityPage({
         >
             <CompatibilityFinder
                 colonists={colonistData}
+                potentialLovers={potentialLovers}
                 initialColonistId={colonistId ?? null}
             />
         </main>

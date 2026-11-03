@@ -8,7 +8,6 @@ import {
     Card,
     Group,
     Menu,
-    Select,
     SimpleGrid,
     Stack,
     Text,
@@ -17,6 +16,7 @@ import {
 } from "@mantine/core";
 import {
     Ban,
+    BookmarkPlus,
     CircleX,
     Crown,
     Heart,
@@ -62,13 +62,35 @@ type CompatibilityColonist = {
     ancestors: Ancestor[];
 };
 
+type ReservedColonist = {
+    id: number;
+    firstName: string;
+    nickname: string | null;
+    lastName: string;
+    title: string | null;
+    imageURL: string | null;
+    isDead: boolean;
+    legacy: {
+        name: string;
+        color: string | null;
+    } | null;
+};
+
+type PotentialLoverReservation = {
+    id: number;
+    createdAt: string;
+    colonistA: ReservedColonist;
+    colonistB: ReservedColonist;
+};
+
 type Props = {
     colonists: CompatibilityColonist[];
+    potentialLovers: PotentialLoverReservation[];
     initialColonistId: string | null;
 };
 
 function getColonistName(
-    colonist: CompatibilityColonist
+    colonist: Pick<CompatibilityColonist, "firstName" | "nickname" | "lastName">
 ) {
     const nickname = colonist.nickname
         ? ` "${colonist.nickname}"`
@@ -110,11 +132,24 @@ function areTooCloselyRelated(
 
 export default function CompatibilityFinder({
     colonists,
+    potentialLovers: initialPotentialLovers,
     initialColonistId,
 }: Props) {
-    const [selectedId, setSelectedId] = useState<
-        string | null
-    >(initialColonistId);
+    const [potentialLovers, setPotentialLovers] = useState(
+        initialPotentialLovers
+    );
+    const [reservationError, setReservationError] = useState<string | null>(null);
+    const [reservationBusy, setReservationBusy] = useState<number | null>(null);
+    const [selectedId, setSelectedId] = useState<string | null>(
+        initialColonistId &&
+            initialPotentialLovers.some(
+                (reservation) =>
+                    reservation.colonistA.id.toString() === initialColonistId ||
+                    reservation.colonistB.id.toString() === initialColonistId
+            )
+            ? null
+            : initialColonistId
+    );
 
     const [excludedColonists, setExcludedColonists] =
         useState<Set<number>>(new Set());
@@ -131,9 +166,21 @@ export default function CompatibilityFinder({
     const [partneredColonists, setPartneredColonists] =
         useState<Set<number>>(new Set());
 
+    const reservedColonistIds = useMemo(() => {
+        const ids = new Set<number>();
+
+        for (const reservation of potentialLovers) {
+            ids.add(reservation.colonistA.id);
+            ids.add(reservation.colonistB.id);
+        }
+
+        return ids;
+    }, [potentialLovers]);
+
     const selectedColonist = colonists.find(
         (colonist) =>
-            colonist.id.toString() === selectedId
+            colonist.id.toString() === selectedId &&
+            !reservedColonistIds.has(colonist.id)
     );
 
     function addColonistExclusion(id: number) {
@@ -261,6 +308,144 @@ export default function CompatibilityFinder({
         }
     }
 
+    async function reservePotentialLovers(colonistId: number) {
+        if (!selectedColonist) {
+            return;
+        }
+
+        setReservationError(null);
+
+        try {
+            const response = await fetch(
+                "/api/colonists/potential-lovers",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        colonistAId: selectedColonist.id,
+                        colonistBId: colonistId,
+                    }),
+                }
+            );
+
+            const data = await response.json().catch(() => null);
+
+            if (!response.ok) {
+                setReservationError(
+                    data?.error ?? "Failed to reserve this pair."
+                );
+                return;
+            }
+
+            const reservation = data.reservation;
+            const first = colonists.find(
+                (colonist) => colonist.id === reservation.colonistAId
+            );
+            const second = colonists.find(
+                (colonist) => colonist.id === reservation.colonistBId
+            );
+
+            if (!first || !second) {
+                // The reservation was saved; refresh to load its full details.
+                window.location.reload();
+                return;
+            }
+
+            setPotentialLovers((current) => [
+                ...current,
+                {
+                    id: reservation.id,
+                    createdAt: reservation.createdAt,
+                    colonistA: {
+                        ...first,
+                        isDead: false,
+                    },
+                    colonistB: {
+                        ...second,
+                        isDead: false,
+                    },
+                },
+            ]);
+            setSelectedId(null);
+        } catch (error) {
+            console.error("Failed to reserve potential lovers:", error);
+            setReservationError("Failed to reserve this pair.");
+        }
+    }
+
+    async function removePotentialLover(reservationId: number) {
+        setReservationBusy(reservationId);
+        setReservationError(null);
+
+        try {
+            const response = await fetch(
+                `/api/colonists/potential-lovers/${reservationId}`,
+                { method: "DELETE" }
+            );
+            const data = await response.json().catch(() => null);
+
+            if (!response.ok) {
+                setReservationError(
+                    data?.error ?? "Failed to remove reservation."
+                );
+                return;
+            }
+
+            setPotentialLovers((current) =>
+                current.filter((reservation) => reservation.id !== reservationId)
+            );
+        } catch (error) {
+            console.error("Failed to remove potential lovers reservation:", error);
+            setReservationError("Failed to remove reservation.");
+        } finally {
+            setReservationBusy(null);
+        }
+    }
+
+    async function setPotentialLoversAsLovers(reservation: PotentialLoverReservation) {
+        setReservationBusy(reservation.id);
+        setReservationError(null);
+
+        try {
+            const response = await fetch(
+                `/api/colonists/potential-lovers/${reservation.id}/set-lovers`,
+                { method: "POST" }
+            );
+            const data = await response.json().catch(() => null);
+
+            if (!response.ok) {
+                setReservationError(
+                    data?.error ?? "Failed to convert reservation into Lovers."
+                );
+                return;
+            }
+
+            setPotentialLovers((current) =>
+                current.filter((item) => item.id !== reservation.id)
+            );
+            setPartneredColonists((current) => {
+                const next = new Set(current);
+                next.add(reservation.colonistA.id);
+                next.add(reservation.colonistB.id);
+                return next;
+            });
+
+            if (
+                selectedId === reservation.colonistA.id.toString() ||
+                selectedId === reservation.colonistB.id.toString()
+            ) {
+                setSelectedId(null);
+            }
+        } catch (error) {
+            console.error("Failed to convert potential lovers reservation:", error);
+            setReservationError("Failed to convert reservation into Lovers.");
+        } finally {
+            setReservationBusy(null);
+        }
+    }
+
     const exclusionCount =
         excludedColonists.size +
         excludedLegacies.size +
@@ -288,6 +473,11 @@ export default function CompatibilityFinder({
                 }
 
                 if (candidate.isPartnered) {
+                    return false;
+                }
+
+                // Both members of a reserved pair are unavailable.
+                if (reservedColonistIds.has(candidate.id)) {
                     return false;
                 }
 
@@ -356,6 +546,7 @@ export default function CompatibilityFinder({
         colonists,
         selectedColonist,
         partneredColonists,
+        reservedColonistIds,
         excludedColonists,
         excludedLegacies,
         excludedGroups,
@@ -363,7 +554,11 @@ export default function CompatibilityFinder({
     ]);
 
     const selectOptions = colonists
-        .filter((colonist) => !colonist.isPartnered)
+        .filter(
+            (colonist) =>
+                !colonist.isPartnered &&
+                !reservedColonistIds.has(colonist.id)
+        )
         .map((colonist) => ({
             value: colonist.id.toString(),
             label: getColonistName(colonist),
@@ -383,6 +578,152 @@ export default function CompatibilityFinder({
                     close biological relatives.
                 </Text>
             </div>
+
+            {/* Potential lover reservations */}
+            <Card
+                shadow="sm"
+                padding="lg"
+                radius="md"
+                withBorder
+                bg="#161616"
+                style={{ borderColor: "#292929" }}
+            >
+                <Stack gap="md">
+                    <Group justify="space-between" align="center">
+                        <div>
+                            <Title order={3}>Potential Lovers</Title>
+                            <Text c="dimmed" size="sm" mt={2}>
+                                Reserved pairings are excluded from the compatibility results until removed or made official.
+                            </Text>
+                        </div>
+                        <Badge color="orange" size="lg">
+                            {potentialLovers.length} {potentialLovers.length === 1 ? "reservation" : "reservations"}
+                        </Badge>
+                    </Group>
+
+                    {reservationError && (
+                        <Text c="red" size="sm">{reservationError}</Text>
+                    )}
+
+                    {potentialLovers.length === 0 ? (
+                        <Text c="dimmed" size="sm">
+                            No potential lovers have been reserved.
+                        </Text>
+                    ) : (
+                        <Stack gap="sm">
+                            {potentialLovers.map((reservation) => (
+                                <Card
+                                    key={reservation.id}
+                                    padding="sm"
+                                    radius="md"
+                                    withBorder
+                                    bg="#1B1B1B"
+                                    style={{ borderColor: "#333333" }}
+                                >
+                                    <Group
+                                        align="center"
+                                        gap="md"
+                                        wrap="nowrap"
+                                    >
+                                        <SimpleGrid
+                                            cols={{ base: 1, sm: 2 }}
+                                            spacing="md"
+                                            style={{
+                                                flex: 1,
+                                                minWidth: 0,
+                                            }}
+                                        >
+                                            {[reservation.colonistA, reservation.colonistB].map((colonist) => (
+                                                <Card
+                                                    key={colonist.id}
+                                                    padding="sm"
+                                                    radius="md"
+                                                    withBorder
+                                                    bg="#222222"
+                                                    style={{
+                                                        borderColor: colonist.legacy?.color ?? "#3A3A3A",
+                                                        minWidth: 0,
+                                                    }}
+                                                >
+                                                    <Group gap="sm" wrap="nowrap" align="center">
+                                                        <Avatar
+                                                            src={colonist.imageURL ? `/api/images/${colonist.imageURL}` : null}
+                                                            size={48}
+                                                            radius="md"
+                                                        >
+                                                            {colonist.firstName.charAt(0).toUpperCase()}
+                                                        </Avatar>
+
+                                                        <Stack gap={3} style={{ minWidth: 0, flex: 1 }}>
+                                                            <Text
+                                                                component="a"
+                                                                href={`/colonists/${colonist.id}`}
+                                                                fw={600}
+                                                                size="sm"
+                                                                style={{
+                                                                    color: colonist.legacy?.color ?? "inherit",
+                                                                    textDecoration: "none",
+                                                                    overflowWrap: "anywhere",
+                                                                }}
+                                                            >
+                                                                {getColonistName(colonist)}
+                                                            </Text>
+
+                                                            {colonist.isDead && (
+                                                                <Badge color="gray" size="xs" w="fit-content">
+                                                                    Deceased
+                                                                </Badge>
+                                                            )}
+
+                                                            {colonist.title && !colonist.isDead && (
+                                                                <Text size="xs" c="dimmed">
+                                                                    {colonist.title}
+                                                                </Text>
+                                                            )}
+                                                        </Stack>
+                                                    </Group>
+                                                </Card>
+                                            ))}
+                                        </SimpleGrid>
+
+                                        <Group
+                                            gap={4}
+                                            wrap="nowrap"
+                                            justify="center"
+                                        >
+                                            <Tooltip label="Set as Lovers">
+                                                <ActionIcon
+                                                    variant="subtle"
+                                                    color="red"
+                                                    aria-label={`Set ${getColonistName(reservation.colonistA)} and ${getColonistName(reservation.colonistB)} as Lovers`}
+                                                    loading={reservationBusy === reservation.id}
+                                                    disabled={reservationBusy !== null}
+                                                    onClick={() => setPotentialLoversAsLovers(reservation)}
+                                                >
+                                                    <Heart size={18} />
+                                                </ActionIcon>
+                                            </Tooltip>
+
+                                            <Tooltip label="Remove reservation">
+                                                <ActionIcon
+                                                    variant="subtle"
+                                                    color="gray"
+                                                    aria-label={`Remove reservation for ${getColonistName(reservation.colonistA)} and ${getColonistName(reservation.colonistB)}`}
+                                                    loading={reservationBusy === reservation.id}
+                                                    disabled={reservationBusy !== null}
+                                                    onClick={() => removePotentialLover(reservation.id)}
+                                                >
+                                                    <CircleX size={18} />
+                                                </ActionIcon>
+                                            </Tooltip>
+                                        </Group>
+                                    </Group>
+                                </Card>
+                            ))}
+                        </Stack>
+                    )}
+                </Stack>
+            </Card>
 
             {/* Selection */}
             <Card
@@ -682,7 +1023,9 @@ export default function CompatibilityFinder({
                                                     aria-label={`Remove ${group.name} exclusion`}
                                                 >
                                                     <CircleX
-                                                        size={12}
+                                                        size={
+                                                            12
+                                                        }
                                                     />
                                                 </ActionIcon>
                                             }
@@ -932,6 +1275,17 @@ export default function CompatibilityFinder({
                                                 justify="flex-end"
                                                 gap="xs"
                                             >
+                                                <Tooltip label="Reserve as Potential Lovers">
+                                                    <ActionIcon
+                                                        variant="subtle"
+                                                        color="orange"
+                                                        aria-label={`Reserve ${getColonistName(colonist)} as a potential lover`}
+                                                        onClick={() => reservePotentialLovers(colonist.id)}
+                                                    >
+                                                        <BookmarkPlus size={18} />
+                                                    </ActionIcon>
+                                                </Tooltip>
+
                                                 <Tooltip label="Make lovers">
                                                     <ActionIcon
                                                         variant="subtle"

@@ -106,6 +106,9 @@ model Colonist {
   partnerARelationships Partnership[] @relation("PartnerA")
   partnerBRelationships Partnership[] @relation("PartnerB")
 
+  potentialLoverAs PotentialLover[] @relation("PotentialLoverA")
+  potentialLoverBs PotentialLover[] @relation("PotentialLoverB")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -192,6 +195,21 @@ model Partnership {
   partnerB Colonist @relation("PartnerB", fields: [partnerBId], references: [id], onDelete: Cascade)
 
   @@unique([partnerAId, partnerBId])
+}
+
+model PotentialLover {
+  id          Int @id @default(autoincrement())
+  colonistAId Int
+  colonistBId Int
+
+  colonistA Colonist @relation("PotentialLoverA", fields: [colonistAId], references: [id], onDelete: Cascade)
+  colonistB Colonist @relation("PotentialLoverB", fields: [colonistBId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([colonistAId, colonistBId])
+  @@index([colonistAId])
+  @@index([colonistBId])
 }
 
 model Skill {

@@ -9,7 +9,7 @@ import {
     Text,
 } from "@mantine/core";
 import { Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import LegacyColorColonistSelect from "@/app/components/LegacyColorColonistSelect";
 
 type ColonistOption = {
@@ -58,7 +58,7 @@ type PartnerRow = {
     relationshipId?: number;
 };
 
-type Props = {
+export type EditRelationshipsProps = {
     colonistId: number;
 
     parentOptions: ColonistOption[];
@@ -91,7 +91,11 @@ type Props = {
         type: PartnershipType;
         relationshipId: number;
     }[];
+
+    returnToPath?: string;
 };
+
+type Props = EditRelationshipsProps;
 
 const relationshipTypes = [
     {
@@ -131,6 +135,7 @@ export default function EditRelationships({
     existingParents,
     existingChildren,
     existingPartners,
+    returnToPath,
 }: Props) {
     const [parents, setParents] = useState<ParentRow[]>(
         existingParents.map((parent) => ({
@@ -276,9 +281,64 @@ export default function EditRelationships({
         );
     }
 
-    function deleteExisting(
-        endpoint: string
+    async function handleSubmit(
+        event: FormEvent<HTMLFormElement>
     ) {
+        if (!returnToPath) {
+            return;
+        }
+
+        event.preventDefault();
+
+        const form = event.currentTarget;
+
+        try {
+            const response = await fetch(form.action, {
+                method: "POST",
+                body: new FormData(form),
+            });
+
+            if (!response.ok) {
+                console.error(
+                    "Failed to save relationship:",
+                    response.statusText
+                );
+                return;
+            }
+
+            window.location.assign(returnToPath);
+        } catch (error) {
+            console.error("Failed to save relationship:", error);
+        }
+    }
+
+    function deleteExisting(endpoint: string) {
+        if (returnToPath) {
+            const formData = new FormData();
+            formData.append("returnTo", colonistId.toString());
+
+            fetch(endpoint, {
+                method: "POST",
+                body: formData,
+            })
+                .then((response) => {
+                    if (!response.ok) {
+                        console.error(
+                            "Failed to delete relationship:",
+                            response.statusText
+                        );
+                        return;
+                    }
+
+                    window.location.assign(returnToPath);
+                })
+                .catch((error) => {
+                    console.error("Failed to delete relationship:", error);
+                });
+
+            return;
+        }
+
         const form = document.createElement("form");
 
         form.method = "POST";
@@ -332,6 +392,7 @@ export default function EditRelationships({
                                 <form
                                     action={`/api/parent-child/${parent.relationshipId}/edit`}
                                     method="POST"
+                                    onSubmit={handleSubmit}
                                     style={{
                                         display: "flex",
                                         gap: "0.75rem",
@@ -380,6 +441,7 @@ export default function EditRelationships({
                             <form
                                 action={`/api/colonists/${colonistId}/parents`}
                                 method="POST"
+                                    onSubmit={handleSubmit}
                                 style={{
                                     display: "flex",
                                     flex: 1,
@@ -491,6 +553,7 @@ export default function EditRelationships({
                                 <form
                                     action={`/api/parent-child/${child.relationshipId}/edit`}
                                     method="POST"
+                                    onSubmit={handleSubmit}
                                     style={{
                                         display: "flex",
                                         gap: "0.75rem",
@@ -539,6 +602,7 @@ export default function EditRelationships({
                             <form
                                 action={`/api/colonists/${colonistId}/children`}
                                 method="POST"
+                                    onSubmit={handleSubmit}
                                 style={{
                                     display: "flex",
                                     flex: 1,
@@ -649,6 +713,7 @@ export default function EditRelationships({
                                 <form
                                     action={`/api/partnership/${partner.relationshipId}/edit`}
                                     method="POST"
+                                    onSubmit={handleSubmit}
                                     style={{
                                         display: "flex",
                                         gap: "0.75rem",
@@ -697,6 +762,7 @@ export default function EditRelationships({
                             <form
                                 action={`/api/colonists/${colonistId}/partnerships`}
                                 method="POST"
+                                    onSubmit={handleSubmit}
                                 style={{
                                     display: "flex",
                                     flex: 1,

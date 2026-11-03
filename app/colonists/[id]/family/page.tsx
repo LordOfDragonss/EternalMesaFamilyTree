@@ -10,6 +10,7 @@ import {
 import ColonistHeader from "@/app/components/ColonistHeader";
 import ColonistNavigation from "../ColonistNavigation";
 import FamilyMember from "@/app/components/FamilyMember";
+import FamilyRelationshipsEditor from "./FamilyRelationshipsEditor";
 
 import {
     getAuntUncleLabel,
@@ -206,6 +207,16 @@ export default async function ColonistFamilyPage({
         return <h1>Colonist not found</h1>;
     }
 
+    const availableColonists = await prisma.colonist.findMany({
+        include: {
+            legacy: true,
+        },
+        orderBy: [
+            { firstName: "asc" },
+            { lastName: "asc" },
+        ],
+    });
+
     /*
      * Partners
      */
@@ -241,12 +252,8 @@ export default async function ColonistFamilyPage({
             parent.colonist.gender === "Male"
     );
 
-    const surrogateParents = parents.filter(
-        (parent) => parent.type === "Surrogate"
-    );
-
     const otherParents = parents.filter(
-        (parent) => parent.type === "Other"
+        (parent) => parent.type !== "Biological"
     );
 
     /*
@@ -557,6 +564,102 @@ export default async function ColonistFamilyPage({
         })
     );
 
+    /*
+     * Relationship editor data
+     */
+    const existingParentIds = colonist.parents.map(
+        (relationship) => relationship.parentId
+    );
+
+    const existingChildIds = colonist.children.map(
+        (relationship) => relationship.childId
+    );
+
+    const existingPartnerIds = [
+        ...colonist.partnerARelationships.map(
+            (relationship) => relationship.partnerBId
+        ),
+        ...colonist.partnerBRelationships.map(
+            (relationship) => relationship.partnerAId
+        ),
+    ];
+
+    const siblingIds = siblings.map((sibling) => sibling.id);
+
+    const potentialRelationshipColonists = availableColonists.filter(
+        (candidate) =>
+            candidate.id !== colonistId &&
+            !existingParentIds.includes(candidate.id) &&
+            !existingChildIds.includes(candidate.id)
+    );
+
+    const potentialPartners = potentialRelationshipColonists.filter(
+        (candidate) =>
+            !existingPartnerIds.includes(candidate.id) &&
+            !siblingIds.includes(candidate.id)
+    );
+
+    function getColonistName(candidate: (typeof availableColonists)[number]) {
+        return `${candidate.firstName}${
+            candidate.nickname ? ` "${candidate.nickname}"` : ""
+        } ${candidate.lastName}`;
+    }
+
+    const parentOptions = potentialRelationshipColonists.map((candidate) => ({
+        value: candidate.id.toString(),
+        label: getColonistName(candidate),
+        color: candidate.legacy?.color ?? null,
+    }));
+
+    const childOptions = potentialRelationshipColonists.map((candidate) => ({
+        value: candidate.id.toString(),
+        label: getColonistName(candidate),
+        color: candidate.legacy?.color ?? null,
+    }));
+
+    const partnerOptions = potentialPartners.map((candidate) => ({
+        value: candidate.id.toString(),
+        label: getColonistName(candidate),
+        color: candidate.legacy?.color ?? null,
+    }));
+
+    const existingParents = colonist.parents.map((relationship) => ({
+        id: relationship.id.toString(),
+        colonistId: relationship.parentId.toString(),
+        name: getColonistName(relationship.parent),
+        color: relationship.parent.legacy?.color ?? null,
+        type: relationship.type,
+        relationshipId: relationship.id,
+    }));
+
+    const existingChildren = colonist.children.map((relationship) => ({
+        id: relationship.id.toString(),
+        colonistId: relationship.childId.toString(),
+        name: getColonistName(relationship.child),
+        color: relationship.child.legacy?.color ?? null,
+        type: relationship.type,
+        relationshipId: relationship.id,
+    }));
+
+    const existingPartners = [
+        ...colonist.partnerARelationships.map((relationship) => ({
+            id: relationship.id.toString(),
+            colonistId: relationship.partnerBId.toString(),
+            name: getColonistName(relationship.partnerB),
+            color: relationship.partnerB.legacy?.color ?? null,
+            type: relationship.type,
+            relationshipId: relationship.id,
+        })),
+        ...colonist.partnerBRelationships.map((relationship) => ({
+            id: relationship.id.toString(),
+            colonistId: relationship.partnerAId.toString(),
+            name: getColonistName(relationship.partnerA),
+            color: relationship.partnerA.legacy?.color ?? null,
+            type: relationship.type,
+            relationshipId: relationship.id,
+        })),
+    ];
+
     return (
         <main
             style={{
@@ -575,6 +678,15 @@ export default async function ColonistFamilyPage({
                     colonistId={colonist.id}
                 />
 
+                <FamilyRelationshipsEditor
+                    colonistId={colonist.id}
+                    parentOptions={parentOptions}
+                    childOptions={childOptions}
+                    partnerOptions={partnerOptions}
+                    existingParents={existingParents}
+                    existingChildren={existingChildren}
+                    existingPartners={existingPartners}
+                >
                 {/* Parents */}
                 <Card
                     shadow="sm"
@@ -644,41 +756,6 @@ export default async function ColonistFamilyPage({
                                             </Group>
                                         </div>
                                     )}
-                                {/* Surrogate */}
-                                {surrogateParents.length > 0 && (
-                                    <div>
-                                        <Text
-                                            size="sm"
-                                            c="dimmed"
-                                            mb="xs"
-                                        >
-                                            Surrogate
-                                        </Text>
-
-                                        <Stack gap="xs">
-                                            {surrogateParents.map(
-                                                (relationship) => (
-                                                    <FamilyMember
-                                                        key={
-                                                            relationship
-                                                                .colonist
-                                                                .id
-                                                        }
-                                                        colonist={
-                                                            relationship.colonist
-                                                        }
-                                                        label={getParentLabel(
-                                                            relationship.type,
-                                                            relationship
-                                                                .colonist
-                                                                .gender
-                                                        )}
-                                                    />
-                                                )
-                                            )}
-                                        </Stack>
-                                    </div>
-                                )}
 
                                 {/* Other parents */}
                                 {otherParents.length > 0 && (
@@ -688,7 +765,7 @@ export default async function ColonistFamilyPage({
                                             c="dimmed"
                                             mb="xs"
                                         >
-                                            Other parental relationships
+                                            Other parents
                                         </Text>
 
                                         <Stack gap="xs">
@@ -1348,6 +1425,7 @@ export default async function ColonistFamilyPage({
                         )}
                     </Stack>
                 </Card>
+                </FamilyRelationshipsEditor>
 
             </Stack>
         </main>

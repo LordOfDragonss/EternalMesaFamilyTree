@@ -18,11 +18,13 @@ import {
 type LegacyFiltersProps = {
     initialSearch: string;
     initialColor: string;
+    initialSort: string;
 };
 
 export default function LegacyFilters({
     initialSearch,
     initialColor,
+    initialSort,
 }: LegacyFiltersProps) {
     const router = useRouter();
     const pathname = usePathname();
@@ -74,16 +76,20 @@ export default function LegacyFilters({
      * ---------------------------------------------------------
      */
     useEffect(() => {
-        const timeout = setTimeout(() => {
+        const timeout = window.setTimeout(() => {
+            const nextSearch = search.trim();
+            const currentSearch =
+                searchParams.get("search") ?? "";
+
+            if (nextSearch === currentSearch) return;
+
             updateParams({
-                search: search.trim()
-                    ? search.trim()
-                    : null,
+                search: nextSearch || null,
             });
         }, 300);
 
-        return () => clearTimeout(timeout);
-    }, [search]);
+        return () => window.clearTimeout(timeout);
+    }, [search, pathname, router, searchParams]);
 
     function handleColorChange(
         value: string | null
@@ -130,6 +136,46 @@ export default function LegacyFilters({
                 value={color || null}
                 onChange={handleColorChange}
                 clearable
+            />
+            <Select
+                label="Sort by"
+                data={[
+                    {
+                        value: "name",
+                        label: "Name A–Z",
+                    },
+                    {
+                        value: "name-desc",
+                        label: "Name Z–A",
+                    },
+                    {
+                        value: "members",
+                        label: "Most members",
+                    },
+                    {
+                        value: "members-asc",
+                        label: "Fewest members",
+                    },
+                    {
+                        value: "newest",
+                        label: "Recently added",
+                    },
+                    {
+                        value: "oldest",
+                        label: "Oldest added",
+                    },
+                ]}
+                value={initialSort}
+                onChange={(value) =>
+                    updateParams({
+                        sort: value === "name" ? null : value,
+                    })
+                }
+                allowDeselect={false}
+                style={{
+                    flex: "1 1 180px",
+                    minWidth: 0,
+                }}
             />
         </Group>
     );

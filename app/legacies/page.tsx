@@ -22,6 +22,7 @@ type LegaciesPageProps = {
     searchParams: Promise<{
         search?: string;
         color?: string;
+        sort?: string;
     }>;
 };
 
@@ -31,7 +32,18 @@ export default async function LegaciesPage({
     searchParams,
 }: LegaciesPageProps) {
     const params = await searchParams;
+    const validSorts = [
+        "name",
+        "name-desc",
+        "members",
+        "members-asc",
+        "newest",
+        "oldest",
+    ];
 
+    const sort = validSorts.includes(params.sort ?? "")
+        ? params.sort!
+        : "name";
     const search = params.search?.trim() ?? "";
     const colorFilter =
         params.color === "with"
@@ -45,7 +57,44 @@ export default async function LegaciesPage({
                     color: null,
                 }
                 : {};
+    const orderBy = (() => {
+        switch (sort) {
+            case "name-desc":
+                return [
+                    { name: "desc" as const },
+                ];
 
+            case "members":
+                return [
+                    { members: { _count: "desc" as const } },
+                    { name: "asc" as const },
+                ];
+
+            case "members-asc":
+                return [
+                    { members: { _count: "asc" as const } },
+                    { name: "asc" as const },
+                ];
+
+            case "newest":
+                return [
+                    { createdAt: "desc" as const },
+                    { name: "asc" as const },
+                ];
+
+            case "oldest":
+                return [
+                    { createdAt: "asc" as const },
+                    { name: "asc" as const },
+                ];
+
+            case "name":
+            default:
+                return [
+                    { name: "asc" as const },
+                ];
+        }
+    })();
     const legacies = await prisma.legacy.findMany({
         where: {
             ...(search
@@ -70,10 +119,9 @@ export default async function LegaciesPage({
             },
         },
 
-        orderBy: {
-            name: "asc",
-        },
+        orderBy,
     });
+
 
     return (
         <main style={{ padding: "2rem" }}>
@@ -127,6 +175,7 @@ export default async function LegaciesPage({
             <LegacyFilters
                 initialSearch={search}
                 initialColor={params.color ?? ""}
+                initialSort={sort}
             />
 
             <SimpleGrid

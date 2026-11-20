@@ -36,6 +36,7 @@ function formatDate(year: number, month: number, day: number) {
 
 function entityValuePart(entity: HighlightEntity): HighlightValuePart {
     return {
+        recordId: entity.id,
         label: entity.name,
         href: entity.href,
         color: entity.color ?? null,
@@ -87,6 +88,7 @@ function mostRecords<T>(
             description: singleWinner
                 ? options.description(singleWinner, highest)
                 : `${winners.length} ${options.winnerLabel} share this record.`,
+            recordId: singleWinner?.id,
             href: singleWinner?.href,
             color: singleWinner?.color ?? null,
             icon: options.icon,
@@ -410,6 +412,7 @@ export async function getArchiveHighlightSections(): Promise<
                         description: singleWinner
                             ? `${firstChild.firstName} ${firstChild.lastName} was born on ${date}, the earliest recorded child birth among legacy members.`
                             : `${winners.length} legacies share the earliest recorded child birth, on ${date}.`,
+                        recordId: singleWinner?.id,
                         href: singleWinner?.href,
                         color: singleWinner?.color ?? null,
                         icon: "legacy",

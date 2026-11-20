@@ -37,6 +37,7 @@ function colonistPart(
     colonist: DiscoveryColonist,
 ): HighlightValuePart {
     return {
+        recordId: colonist.id,
         label: getName(colonist),
         href: `/colonists/${colonist.id}`,
         color: colonist.legacy?.color ?? null,
